@@ -121,7 +121,7 @@ int main(int argc, char **argv)
     else
     {
         printf("[CLIENT] Usage: %s <domain> <service>\n", argv[0]);
-        printf("[CLIENT] Example: %s localhost 9090\n", argv[0]);
+        printf("[CLIENT] Example: %s localhost 8023\n", argv[0]);
     }
 
     return 0;
