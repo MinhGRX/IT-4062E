@@ -1,0 +1,26 @@
+# Specific Folder
+References
+Implementation_Summary/
+
+# Compiled executables 
+chat_application/server/server
+chat_application/client/client
+
+# Object files
+*.o
+*.a
+*.so
+
+# Dependencies
+*.d
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

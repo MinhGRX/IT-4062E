@@ -1,0 +1,45 @@
+Tên đề tài: Xây dựng ứng dụng chat
+
+Mô tả: 
+Ứng dụng có các chức năng sau:
+- Khi 1  user đăng nhập thành công, cung cấp danh sách các bạn bè khác đang online
+- User gửi và nhận thông điệp
+- Khi có 1 trong 2 user ngắt kết nối hoặc yêu cầu dừng cuộc trò chuyện, thông báo cho bên còn lại biết.
+- Tạo nhóm chat:
++ User tạo nhóm chat
++ User gửi yêu cầu mời tham gia nhóm tới các user khác
++ Tham gia và rời nhóm chat
++ Gửi thông điệp tới các nhóm
+
+Yêu cầu:
+ 	
+================================================================================
+
+1. NỀN TẢNG HỆ THỐNG (CƠ CHẾ CHUNG)
+- Xử lý truyền dòng (1 điểm)
+- Cài đặt cơ chế vào/ra socket trên server (2 điểm)
+- Đăng ký và quản lý tài khoản (2 điểm)
+- Ghi log hoạt động (1 điểm)
+
+2. KHI 1 USER ĐĂNG NHẬP THÀNH CÔNG, CUNG CẤP DANH SÁCH BẠN BÈ ONLINE
+- Đăng nhập và quản lý phiên (2 điểm)
+- Gửi lời mời kết bạn (1 điểm)
+- Chấp nhận/Từ chối lời mời kết bạn (1 điểm)
+- Hủy kết bạn (1 điểm)
+- Lấy danh sách bạn bè và trạng thái (1 điểm)
+
+3. USER GỬI VÀ NHẬN THÔNG ĐIỆP
+- Gửi nhận tin nhắn giữa 2 người dùng (1 điểm)
+- Gửi tin nhắn offline (1 điểm)
+
+4. KHI CÓ USER NGẮT KẾT NỐI HOẶC DỪNG CUỘC TRÒ CHUYỆN
+- Ngắt kết nối (1 điểm)
+
+5. TẠO NHÓM CHAT (BAO GỒM CÁC CHỨC NĂNG CON)
+- Tạo nhóm chat (1 điểm)
+- Thêm người dùng khác vào nhóm chat (1 điểm)
+- Xóa người dùng ra khỏi nhóm chat (1 điểm)
+- Rời nhóm chat (1 điểm)
+- Gửi nhận thông điệp trong nhóm chat (1 điểm)
+
+================================================================================
