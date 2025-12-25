@@ -14,6 +14,10 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <stdarg.h>
+#include "database.h"
+#include "network.h"
+#include "globals.h"
+#include "controllers/auth_controller.h"
 
 #define BUF_SIZE 4096
 #define BACKLOG  128
@@ -33,15 +37,18 @@ static void rstrip(char *s)
     }
 }
 
-static int send_line(int fd, const char *msg)
-{
-    size_t len = strlen(msg);
-    if (send(fd, msg, len, 0) < 0)
-    {
-        return -1;
-    }
-    return 0;
-}
+ActiveUser online_users[MAX_CLIENTS];
+pthread_mutex_t online_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// int send_line(int fd, const char *msg)
+// {
+//     size_t len = strlen(msg);
+//     if (send(fd, msg, len, 0) < 0)
+//     {
+//         return -1;
+//     }
+//     return 0;
+// }
 
 static void ensure_dirs(void)
 {
@@ -73,6 +80,17 @@ static void log_activity(const char *fmt, ...)
     }
     
     pthread_mutex_unlock(&file_mutex);
+}
+
+void notify_user(const char *target_username, const char *msg) {
+    pthread_mutex_lock(&online_mutex);
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (online_users[i].fd != -1 && strcmp(online_users[i].username, target_username) == 0) {
+            send_line(online_users[i].fd, msg);
+            break;
+        }
+    }
+    pthread_mutex_unlock(&online_mutex);
 }
 
 static int user_exists(const char *username)
@@ -157,98 +175,16 @@ static int register_user(const char *username, const char *password)
     return result;
 }
 
-static void handle_command(int fd, const char *line, char *username, int *logged_in)
-{
-    char response[BUF_SIZE];
-    char *copy = malloc(strlen(line) + 1);
-    if (copy == NULL)
-    {
-        return;
+void db_reset_all_online_status() {
+    const char *query = "UPDATE \"User\" SET status = '0';";
+    PGresult *res = PQexec(conn, query);
+
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        fprintf(stderr, "[DB] Reset online status failed: %s\n", PQerrorMessage(conn));
+    } else {
+        printf("[DB] All users reset to offline status.\n");
     }
-    strcpy(copy, line);
-    
-    char *cmd = strtok(copy, " ");
-    
-    if (cmd == NULL)
-    {
-        free(copy);
-        return;
-    }
-    
-    if (strcmp(cmd, "REGISTER") == 0)
-    {
-        char *user = strtok(NULL, " ");
-        char *pass = strtok(NULL, " ");
-        
-        if (user == NULL || pass == NULL)
-        {
-            send_line(fd, "ERR Invalid REGISTER syntax\n");
-        }
-        else if (user_exists(user))
-        {
-            send_line(fd, "ERR User already exists\n");
-        }
-        else if (register_user(user, pass))
-        {
-            send_line(fd, "OK User registered\n");
-            log_activity("REGISTER %s", user);
-        }
-        else
-        {
-            send_line(fd, "ERR Registration failed\n");
-        }
-    }
-    else if (strcmp(cmd, "LOGIN") == 0)
-    {
-        char *user = strtok(NULL, " ");
-        char *pass = strtok(NULL, " ");
-        
-        if (user == NULL || pass == NULL)
-        {
-            send_line(fd, "ERR Invalid LOGIN syntax\n");
-        }
-        else if (!user_exists(user))
-        {
-            send_line(fd, "ERR User not found\n");
-        }
-        else if (!check_password(user, pass))
-        {
-            send_line(fd, "ERR Wrong password\n");
-        }
-        else
-        {
-            strncpy(username, user, 63);
-            username[63] = '\0';
-            *logged_in = 1;
-            send_line(fd, "OK LOGIN successful\n");
-            log_activity("LOGIN %s", user);
-        }
-    }
-    else if (strcmp(cmd, "LOGOUT") == 0)
-    {
-        if (*logged_in)
-        {
-            log_activity("LOGOUT %s", username);
-            send_line(fd, "OK LOGOUT successful\n");
-            *logged_in = 0;
-            username[0] = '\0';
-        }
-        else
-        {
-            send_line(fd, "ERR Not logged in\n");
-        }
-    }
-    else if (strcmp(cmd, "PING") == 0)
-    {
-        send_line(fd, "PONG\n");
-    }
-    else
-    {
-        snprintf(response, sizeof(response), "OK %s\n", line);
-        send_line(fd, response);
-    }
-    
-    free(copy);
+    PQclear(res);
 }
 
 static void *do_client(void *arg)
@@ -271,17 +207,27 @@ static void *do_client(void *arg)
         memset(buf, 0, sizeof(buf));
         ssize_t n = recv(cfd, buf, sizeof(buf) - 1, 0);
         
-        if (n <= 0)
-        {
-            if (logged_in)
-            {
+        if (n <= 0) {
+            if (logged_in) {
                 log_activity("DISCONNECT %s", username);
+
+                pthread_mutex_lock(&online_mutex);
+                for (int i = 0; i < MAX_CLIENTS; i++) {
+                    if (online_users[i].fd == cfd) {
+                        char update_query[256];
+                        sprintf(update_query, "UPDATE \"User\" SET status = '0' WHERE username = '%s';", username);
+                        PQexec(conn, update_query);
+                        online_users[i].fd = -1;
+                        memset(online_users[i].username, 0, sizeof(online_users[i].username));
+                        break;
+                    }
+                }
+                pthread_mutex_unlock(&online_mutex);
             }
             break;
         }
 
-        if (inlen + (size_t)n > sizeof(inbuf))
-        {
+        if (inlen + (size_t)n > sizeof(inbuf)) {
             inlen = 0;
             send_line(cfd, "ERR Line too long\n");
             continue;
@@ -291,34 +237,29 @@ static void *do_client(void *arg)
         inlen += (size_t)n;
 
         size_t start = 0;
-        for (size_t i = 0; i < inlen; i++)
-        {
-            if (inbuf[i] == '\n')
-            {
+        for (size_t i = 0; i < inlen; i++) {
+            if (inbuf[i] == '\n') {
                 size_t line_len = i - start + 1;
-                if (line_len >= BUF_SIZE)
-                {
-                    start = i + 1;
-                    continue;
-                }
-
                 char line[BUF_SIZE];
-                memset(line, 0, sizeof(line));
                 memcpy(line, inbuf + start, line_len);
                 line[line_len] = '\0';
                 rstrip(line);
                 
-                if (line[0] != '\0')
-                {
-                    handle_command(cfd, line, username, &logged_in);
+                if (line[0] != '\0') {
+                    char cmd[64] = {0}, user[64] = {0}, pass[64] = {0};
+                    int parts = sscanf(line, "%s %s %s", cmd, user, pass);
+                    
+                    if (parts > 0) {
+                        auth_controller_handle(cfd, cmd, user, pass, username, &logged_in);
+                        log_activity("CLIENT %d: %s", cfd, line);
+                    }
+                    // ----------------------------------
                 }
-
                 start = i + 1;
             }
         }
 
-        if (start > 0)
-        {
+        if (start > 0) {
             memmove(inbuf, inbuf + start, inlen - start);
             inlen -= start;
         }
@@ -332,6 +273,8 @@ int main(int argc, char **argv)
 {
     ensure_dirs();
     log_activity("SERVER START");
+    db_connect();
+    db_reset_all_online_status();
 
     if (argc >= 3)
     {
@@ -342,6 +285,13 @@ int main(int argc, char **argv)
         
         getaddrinfo(domain, service, NULL, &pResult);
         pTmp = pResult;
+
+        pthread_mutex_lock(&online_mutex);
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+            online_users[i].fd = -1;
+            memset(online_users[i].username, 0, sizeof(online_users[i].username));
+        }
+        pthread_mutex_unlock(&online_mutex);
         
         while (pTmp != NULL)
         {
@@ -417,5 +367,6 @@ int main(int argc, char **argv)
         printf("[SERVER] Example: %s localhost 8023\n", argv[0]);
     }
 
+    db_disconnect();
     return 0;
 }

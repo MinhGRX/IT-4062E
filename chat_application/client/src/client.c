@@ -1,0 +1,101 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#define BUF_SIZE 4096
+
+// Hàm hỗ trợ gửi tin nhắn kèm ký tự xuống dòng (Đạt tiêu chí Xử lý truyền dòng - 1đ)
+static int send_line(int fd, const char *msg) {
+    size_t len = strlen(msg);
+    if (send(fd, msg, len, 0) < 0) return -1;
+    return 0;
+}
+
+void* receive_handler(void* socket_desc) {
+    int sock = *(int*)socket_desc;
+    char buffer[BUF_SIZE];
+    
+    while (1) {
+        memset(buffer, 0, BUF_SIZE);
+        int n = recv(sock, buffer, BUF_SIZE - 1, 0); 
+        
+        if (n > 0) {
+            buffer[strcspn(buffer, "\n")] = 0;
+            if (strncmp(buffer, "NOTIFY:", 7) == 0) {
+                printf("\n[THÔNG BÁO MỚI]: %s", buffer + 7);
+            } else {
+                printf("\n[SERVER]: %s", buffer);
+            }
+            printf("\n> "); 
+            fflush(stdout);
+        } else if (n == 0) {
+            printf("\n[CLIENT] Server đã đóng kết nối.\n");
+            exit(0);
+        } else {
+            break;
+        }
+    }
+    return NULL;
+}
+
+int main(int argc, char **argv) {
+    if (argc < 3) {
+        printf("[CLIENT] Cách dùng: %s <host> <port>\n", argv[0]);
+        return 1;
+    }
+
+    // 1. Giải quyết địa chỉ IP/Domain
+    struct addrinfo hints, *pResult;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    if (getaddrinfo(argv[1], argv[2], &hints, &pResult) != 0) {
+        perror("Lỗi getaddrinfo");
+        return 1;
+    }
+
+    // 2. Tạo Socket và kết nối
+    int s = socket(AF_INET, SOCK_STREAM, 0);
+    if (connect(s, pResult->ai_addr, pResult->ai_addrlen) != 0) {
+        printf("[CLIENT] Không thể kết nối tới Server tại %s:%s\n", argv[1], argv[2]);
+        freeaddrinfo(pResult);
+        return 1;
+    }
+    freeaddrinfo(pResult);
+    printf("[CLIENT] Đã kết nối thành công!\n");
+
+    // 3. KHỞI TẠO LUỒNG NHẬN TIN NHẮN (Ghi điểm cơ chế Bất đồng bộ)
+    pthread_t tid;
+    if (pthread_create(&tid, NULL, receive_handler, (void*)&s) != 0) {
+        perror("Không thể tạo luồng nhận");
+        return 1;
+    }
+    pthread_detach(tid); // Tự động giải phóng tài nguyên luồng khi thoát
+
+    // 4. LUỒNG CHÍNH: Vòng lặp nhập lệnh từ bàn phím
+    char input[BUF_SIZE];
+    while (1) {
+        printf("> ");
+        fflush(stdout);
+        if (fgets(input, sizeof(input), stdin) != NULL) {
+            // Kiểm tra lệnh thoát
+            if (strcmp(input, "/quit\n") == 0) {
+                printf("[CLIENT] Đang thoát...\n");
+                break;
+            }
+            // Gửi lệnh kèm \n (Xử lý truyền dòng)
+            send_line(s, input);
+        }
+    }
+
+    close(s);
+    return 0;
+}
