@@ -11,7 +11,6 @@
 
 #define BUF_SIZE 4096
 
-// Hàm hỗ trợ gửi tin nhắn kèm ký tự xuống dòng (Đạt tiêu chí Xử lý truyền dòng - 1đ)
 static int send_line(int fd, const char *msg) {
     size_t len = strlen(msg);
     if (send(fd, msg, len, 0) < 0) return -1;
@@ -78,7 +77,7 @@ int main(int argc, char **argv) {
         perror("Không thể tạo luồng nhận");
         return 1;
     }
-    pthread_detach(tid); // Tự động giải phóng tài nguyên luồng khi thoát
+    pthread_detach(tid);
 
     // 4. LUỒNG CHÍNH: Vòng lặp nhập lệnh từ bàn phím
     char input[BUF_SIZE];
@@ -86,12 +85,10 @@ int main(int argc, char **argv) {
         printf("> ");
         fflush(stdout);
         if (fgets(input, sizeof(input), stdin) != NULL) {
-            // Kiểm tra lệnh thoát
             if (strcmp(input, "/quit\n") == 0) {
                 printf("[CLIENT] Đang thoát...\n");
                 break;
             }
-            // Gửi lệnh kèm \n (Xử lý truyền dòng)
             send_line(s, input);
         }
     }

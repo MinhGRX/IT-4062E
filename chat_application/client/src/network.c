@@ -10,7 +10,6 @@ void* receive_handler(void* socket_desc) {
         n = recv(sock, buffer, BUF_SIZE - 1, 0);
         
         if (n > 0) {
-            // Khi có tin nhắn đến, in ra màn hình ngay lập tức
             printf("\n[SERVER]: %s", buffer);
             printf("\n> "); 
             fflush(stdout);

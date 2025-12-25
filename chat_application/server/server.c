@@ -1,6 +1,3 @@
-// Based on multithread_tcp_chatroom_server.c from References
-// Modified to add: line-framed command parsing, handle_line() stub
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +15,8 @@
 #include "network.h"
 #include "globals.h"
 #include "controllers/auth_controller.h"
+#include "controllers/chat_controller.h"
+#include "dao/chat_dao.h"
 
 #define BUF_SIZE 4096
 #define BACKLOG  128
@@ -27,6 +26,7 @@
 #define LOG_FILE "./logs/server.log"
 
 static pthread_mutex_t file_mutex = PTHREAD_MUTEX_INITIALIZER;
+extern PGconn *conn;
 
 static void rstrip(char *s)
 {
@@ -175,16 +175,17 @@ static int register_user(const char *username, const char *password)
     return result;
 }
 
-void db_reset_all_online_status() {
-    const char *query = "UPDATE \"User\" SET status = '0';";
-    PGresult *res = PQexec(conn, query);
-
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        fprintf(stderr, "[DB] Reset online status failed: %s\n", PQerrorMessage(conn));
-    } else {
-        printf("[DB] All users reset to offline status.\n");
+int get_user_index_by_fd(int fd) {
+    int idx = -1;
+    pthread_mutex_lock(&online_mutex);
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (online_users[i].fd == fd) {
+            idx = i;
+            break;
+        }
     }
-    PQclear(res);
+    pthread_mutex_unlock(&online_mutex);
+    return idx;
 }
 
 static void *do_client(void *arg)
@@ -195,11 +196,10 @@ static void *do_client(void *arg)
     char username[64];
     username[0] = '\0';
     int logged_in = 0;
-
     char inbuf[BUF_SIZE];
     size_t inlen = 0;
 
-    send_line(cfd, "OK HELLO\n");
+    send_line(cfd, "HELLO\n");
 
     for (;;)
     {
@@ -246,14 +246,19 @@ static void *do_client(void *arg)
                 rstrip(line);
                 
                 if (line[0] != '\0') {
-                    char cmd[64] = {0}, user[64] = {0}, pass[64] = {0};
-                    int parts = sscanf(line, "%s %s %s", cmd, user, pass);
-                    
-                    if (parts > 0) {
-                        auth_controller_handle(cfd, cmd, user, pass, username, &logged_in);
-                        log_activity("CLIENT %d: %s", cfd, line);
+                    int my_idx = get_user_index_by_fd(cfd);
+                    if (logged_in && my_idx != -1 && strlen(online_users[my_idx].chatting_with) > 0) {
+                        chat_controller_handle_line(my_idx, line);
+                        
+                    } else {
+                        char cmd[64] = {0}, arg1[64] = {0}, arg2[64] = {0};
+                        int parts = sscanf(line, "%s %s %s", cmd, arg1, arg2);
+                        
+                        if (parts > 0) {
+                            auth_controller_handle(cfd, cmd, arg1, arg2, username, &logged_in);
+                        }
                     }
-                    // ----------------------------------
+                    log_activity("CLIENT %d: %s", cfd, line);
                 }
                 start = i + 1;
             }
