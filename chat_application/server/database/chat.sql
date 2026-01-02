@@ -27,13 +27,34 @@ CREATE TABLE "MessageLog" (
                               FOREIGN KEY ("receiver") REFERENCES "User" ("username")
 );
 
--- DROP TABLE IF EXISTS "Group" CASCADE;
--- CREATE TABLE "Group"(
--- 	"groupName" VARCHAR(255) NOT NULL,
--- 	"username" VARCHAR(255) NOT NULL,
--- 	PRIMARY KEY ("groupName")
--- );
+DROP TABLE IF EXISTS "Group" CASCADE;
+CREATE TABLE "Group" (
+    "groupId" SERIAL PRIMARY KEY,
+    "groupName" VARCHAR(255) NOT NULL UNIQUE,
+    "creator" VARCHAR(255) NOT NULL REFERENCES "User" ("username"),
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
+DROP TABLE IF EXISTS "GroupMember" CASCADE;
+CREATE TABLE "GroupMember" (
+    "groupId" INT NOT NULL REFERENCES "ChatGroup" ("groupId") ON DELETE CASCADE,
+    "username" VARCHAR(255) NOT NULL REFERENCES "User" ("username") ON DELETE CASCADE,
+    "role" VARCHAR(20) DEFAULT 'member' CHECK ("role" IN ('member','owner')),
+    "joinedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ("groupId","username")
+);
+
+DROP TABLE IF EXISTS "GroupMessage" CASCADE;
+CREATE TABLE "GroupMessage" (
+    "id" SERIAL PRIMARY KEY,
+    "groupId" INT NOT NULL REFERENCES "ChatGroup" ("groupId") ON DELETE CASCADE,
+    "sender" VARCHAR(255) NOT NULL REFERENCES "User" ("username"),
+    "content" TEXT,
+    "sentTime" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "delivered" BOOLEAN DEFAULT FALSE
+);
+
+--- Insert sample data into User table
 INSERT INTO "User" ("username", "password")
 VALUES
     ('user1', 'password1'),
