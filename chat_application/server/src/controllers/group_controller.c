@@ -130,3 +130,52 @@ void group_controller_remove_member(int client_fd, int group_id, const char *own
         send_line(client_fd, "ERR Failed to remove member\n");
     }
 }
+
+void group_controller_leave(int client_fd, int group_id, const char *username) {
+    // Validate input
+    if (!username || strlen(username) == 0) {
+        send_line(client_fd, "ERR Invalid username\n");
+        return;
+    }
+
+    // Check if user is a member
+    if (!group_dao_is_member(group_id, username)) {
+        send_line(client_fd, "ERR You are not a member of this group\n");
+        return;
+    }
+
+    // Prevent owner from leaving
+    if (group_dao_is_owner(group_id, username)) {
+        send_line(client_fd, "ERR Owner cannot leave group. Delete the group or transfer ownership first\n");
+        log_activity("GROUP_LEAVE: Owner %s tried to leave group %d (blocked)", username, group_id);
+        return;
+    }
+
+    // Remove the user from group
+    if (group_dao_remove_member(group_id, username) == 0) {
+        char response[256];
+        snprintf(response, sizeof(response), "OK You have left group %d\n", group_id);
+        send_line(client_fd, response);
+        log_activity("GROUP_LEAVE: User %s left group %d", username, group_id);
+
+        // Reset current group if user was in this group
+        pthread_mutex_lock(&online_mutex);
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+            if (online_users[i].fd == client_fd) {
+                if (online_users[i].current_group_id == group_id) {
+                    online_users[i].current_group_id = -1;
+                    memset(online_users[i].current_group_name, 0, sizeof(online_users[i].current_group_name));
+                }
+                break;
+            }
+        }
+        pthread_mutex_unlock(&online_mutex);
+
+        // Notify other members (optional)
+        // You can add broadcast notification here if needed
+        
+    } else {
+        send_line(client_fd, "ERR Failed to leave group\n");
+        log_activity("GROUP_LEAVE: Failed to remove %s from group %d", username, group_id);
+    }
+}

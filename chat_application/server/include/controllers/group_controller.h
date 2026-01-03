@@ -12,4 +12,9 @@ void group_controller_add_member(int client_fd, int group_id, const char *reques
 
 // Remove member from group (owner only)
 void group_controller_remove_member(int client_fd, int group_id, const char *owner, const char *username_to_remove);
+
+// Leave group (any member except owner)
+void group_controller_leave(int client_fd, int group_id, const char *username);
+
+
 #endif

@@ -119,6 +119,16 @@ void auth_controller_handle(int fd, char *cmd, char *user, char *pass, char *cur
                 send_line(fd, "ERR Invalid command format. Use: GROUP_REMOVE <group_id> <username>\n");
             }
         }
+        else if (strcmp(cmd, "LEAVE_GROUP") == 0) {
+            // user = group_id (string)
+            if (user && strlen(user) > 0) {
+                int group_id = atoi(user);
+                group_controller_leave(fd, group_id, current_user);
+            } else {
+                send_line(fd, "ERR Invalid command format. Use: LEAVE_GROUP <group_id>\n");
+            }
+        }
+
 
         // Chat related commands
         else if (strcmp(cmd, "CHAT") == 0) {
