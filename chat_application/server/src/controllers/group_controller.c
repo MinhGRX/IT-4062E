@@ -82,3 +82,51 @@ void group_controller_add_member(int client_fd, int group_id, const char *reques
         printf("[LOG] Failed to add %s to group %d\n", username_to_add, group_id);
     }
 }
+
+void group_controller_remove_member(int client_fd, int group_id, const char *owner, const char *username_to_remove) {
+    // Validate input
+    if (!owner || !username_to_remove || strlen(owner) == 0 || strlen(username_to_remove) == 0) {
+        send_line(client_fd, "ERR Invalid parameters\n");
+        return;
+    }
+
+    // Check permission: only owner
+    if (!group_dao_is_owner(group_id, owner)) {
+        send_line(client_fd, "ERR Only group owner can remove members\n");
+        return;
+    }
+
+    // Prevent removing owner
+    if (strcmp(owner, username_to_remove) == 0) {
+        send_line(client_fd, "ERR Owner cannot remove themselves (use LEAVE_GROUP or delete group)\n");
+        return;
+    }
+
+    // Ensure target is in group
+    if (!group_dao_is_member(group_id, username_to_remove)) {
+        send_line(client_fd, "ERR User is not a member of this group\n");
+        return;
+    }
+
+    // Remove
+    if (group_dao_remove_member(group_id, username_to_remove) == 0) {
+        char resp[256];
+        snprintf(resp, sizeof(resp), "OK Removed %s from group %d\n", username_to_remove, group_id);
+        send_line(client_fd, resp);
+        log_activity("GROUP_REMOVE: owner %s removed %s from group %d", owner, username_to_remove, group_id);
+
+        // Notify removed user if online
+        pthread_mutex_lock(&online_mutex);
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+            if (online_users[i].fd != -1 && strcmp(online_users[i].username, username_to_remove) == 0) {
+                char notify[256];
+                snprintf(notify, sizeof(notify), "NOTIFY You have been removed from group %d by owner\n", group_id);
+                send_line(online_users[i].fd, notify);
+                break;
+            }
+        }
+        pthread_mutex_unlock(&online_mutex);
+    } else {
+        send_line(client_fd, "ERR Failed to remove member\n");
+    }
+}

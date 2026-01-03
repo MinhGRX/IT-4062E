@@ -13,5 +13,10 @@ int group_dao_add_member(int group_id, const char *username, const char *role);
 // Check if user is group member
 int group_dao_is_member(int group_id, const char *username);
 
+// Check if user is group owner
+int group_dao_is_owner(int group_id, const char *username);
+
+// Remove a member from a group
+int group_dao_remove_member(int group_id, const char *username);
 
 #endif

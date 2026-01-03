@@ -65,3 +65,53 @@ int group_dao_is_member(int group_id, const char *username) {
     
     return is_member;
 }
+
+int group_dao_is_owner(int group_id, const char *username) {
+    if (!username || strlen(username) == 0) {
+        fprintf(stderr, "ERROR: Invalid username\n");
+        return 0;
+    }
+    
+    char query[512];
+    snprintf(query, sizeof(query),
+        "SELECT 1 FROM \"GroupMember\" "
+        "WHERE \"groupId\" = %d AND \"username\" = '%s' AND \"role\" = 'owner';",
+        group_id, username);
+    
+    PGresult *res = PQexec(conn, query);
+    
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        fprintf(stderr, "SQL Error in group_dao_is_owner: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+        return 0;
+    }
+    
+    int is_owner = PQntuples(res) > 0 ? 1 : 0;
+    PQclear(res);
+    
+    return is_owner;
+}
+
+int group_dao_remove_member(int group_id, const char *username) {
+    if (!username || strlen(username) == 0) {
+        fprintf(stderr, "ERROR: Invalid username\n");
+        return -1;
+    }
+    
+    char query[512];
+    snprintf(query, sizeof(query),
+        "DELETE FROM \"GroupMember\" "
+        "WHERE \"groupId\" = %d AND \"username\" = '%s';",
+        group_id, username);
+    
+    PGresult *res = PQexec(conn, query);
+    
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        fprintf(stderr, "SQL Error in group_dao_remove_member: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+        return -1;
+    }
+    
+    PQclear(res);
+    return 0;
+}

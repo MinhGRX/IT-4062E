@@ -144,12 +144,13 @@ int friend_dao_are_friends(const char *user1, const char *user2) {
         return 0;
     }
     
-    // Check if they are friends (bidirectional relationship)
+    // Check if they are friends with status='accepted' (bidirectional)
     char query[512];
     snprintf(query, sizeof(query),
         "SELECT 1 FROM \"Friend\" "
-        "WHERE (\"user1\" = '%s' AND \"user2\" = '%s') "
-        "   OR (\"user1\" = '%s' AND \"user2\" = '%s') "
+        "WHERE ((\"username\" = '%s' AND \"friend_name\" = '%s') "
+        "    OR (\"username\" = '%s' AND \"friend_name\" = '%s')) "
+        "  AND \"status\" = 'accepted' "
         "LIMIT 1;",
         user1, user2, user2, user1);
     
@@ -162,6 +163,11 @@ int friend_dao_are_friends(const char *user1, const char *user2) {
     }
     
     int are_friends = PQntuples(res) > 0 ? 1 : 0;
+    
+    // Debug output
+    printf("[DEBUG] Checking friendship: %s and %s -> %s\n", 
+           user1, user2, are_friends ? "YES" : "NO");
+    
     PQclear(res);
     
     return are_friends;

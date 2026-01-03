@@ -279,3 +279,16 @@
 [2026-01-03 19:18:51] CLIENT 5: CREATE_GROUP test
 [2026-01-03 19:18:59] GROUP_ADD: User user1 tried to add user3 to group 1 but they are not friends
 [2026-01-03 19:18:59] CLIENT 5: GROUP_ADD 1 user3
+[2026-01-03 19:40:35] SERVER START
+[2026-01-03 19:41:17] LOGIN: user1 is now online
+[2026-01-03 19:41:17] CLIENT 5: LOGIN user1 password1
+[2026-01-03 19:41:28] CLIENT 5: CREATE_GROUP test
+[2026-01-03 19:41:42] CLIENT 5: CREATE_GROUP Natus
+[2026-01-03 19:42:18] GROUP_ADD: User user1 tried to add user4 to group 3 but they are not friends
+[2026-01-03 19:42:18] CLIENT 5: GROUP_ADD 3 user4
+[2026-01-03 19:46:51] SERVER START
+[2026-01-03 19:47:06] LOGIN: user1 is now online
+[2026-01-03 19:47:06] CLIENT 5: LOGIN user1 password1
+[2026-01-03 19:47:20] CLIENT 5: GROUP_ADD 3 user4
+[2026-01-03 19:47:36] GROUP_REMOVE: owner user1 removed user4 from group 3
+[2026-01-03 19:47:36] CLIENT 5: GROUP_REMOVE 3 user4
