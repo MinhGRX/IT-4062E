@@ -100,6 +100,19 @@ void auth_controller_handle(int fd, char *cmd, char *user, char *pass, char *cur
         
         // Group related commands
         else if (strcmp(cmd, "CREATE_GROUP") == 0) group_controller_create(fd, current_user, user);
+        else if (strcmp(cmd, "GROUP_ADD") == 0) {
+            // user contains group_id as string
+            // pass contains username_to_add
+            
+            if (user && pass && strlen(user) > 0 && strlen(pass) > 0) {
+                int group_id = atoi(user);  // Convert arg1 to int
+                printf("[LOG] Processing GROUP_ADD command: group_id=%d, username=%s from user %s\n", 
+                    group_id, pass, current_user);
+                group_controller_add_member(fd, group_id, current_user, pass);
+            } else {
+                send_line(fd, "ERR Invalid command format. Use: GROUP_ADD <group_id> <username>\n");
+            }
+        }
 
         // Chat related commands
         else if (strcmp(cmd, "CHAT") == 0) {

@@ -8,4 +8,7 @@ void friend_dao_remove_friend(int client_fd, const char *username, const char *f
 void friend_dao_get_requests(int client_fd, const char* username);
 void friend_dao_decline_request(int client_fd, const char *username, const char *friend_name);
 
+// Check if two users are friends
+int friend_dao_are_friends(const char *user1, const char *user2);
+
 #endif

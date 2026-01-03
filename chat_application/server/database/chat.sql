@@ -31,27 +31,32 @@ DROP TABLE IF EXISTS "Group" CASCADE;
 CREATE TABLE "Group" (
     "groupId" SERIAL PRIMARY KEY,
     "groupName" VARCHAR(255) NOT NULL UNIQUE,
-    "creator" VARCHAR(255) NOT NULL REFERENCES "User" ("username"),
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    "creator" VARCHAR(255) NOT NULL,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("creator") REFERENCES "User"("username") ON DELETE CASCADE
 );
 
 DROP TABLE IF EXISTS "GroupMember" CASCADE;
 CREATE TABLE "GroupMember" (
-    "groupId" INT NOT NULL REFERENCES "Group" ("groupId") ON DELETE CASCADE,
-    "username" VARCHAR(255) NOT NULL REFERENCES "User" ("username") ON DELETE CASCADE,
-    "role" VARCHAR(20) DEFAULT 'member' CHECK ("role" IN ('member','owner')),
+    "memberId" SERIAL PRIMARY KEY,
+    "groupId" INTEGER NOT NULL,
+    "username" VARCHAR(255) NOT NULL,
+    "role" VARCHAR(50) DEFAULT 'member',
     "joinedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY ("groupId","username")
+    FOREIGN KEY ("groupId") REFERENCES "Group"("groupId") ON DELETE CASCADE,
+    FOREIGN KEY ("username") REFERENCES "User"("username") ON DELETE CASCADE,
+    UNIQUE("groupId", "username")
 );
 
 DROP TABLE IF EXISTS "GroupMessage" CASCADE;
 CREATE TABLE "GroupMessage" (
-    "id" SERIAL PRIMARY KEY,
-    "groupId" INT NOT NULL REFERENCES "Group" ("groupId") ON DELETE CASCADE,
-    "sender" VARCHAR(255) NOT NULL REFERENCES "User" ("username"),
-    "content" TEXT,
-    "sentTime" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    "delivered" BOOLEAN DEFAULT FALSE
+    "messageId" SERIAL PRIMARY KEY,
+    "groupId" INTEGER NOT NULL,
+    "sender" VARCHAR(255) NOT NULL,
+    "message" TEXT NOT NULL,
+    "timestamp" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("groupId") REFERENCES "Group"("groupId") ON DELETE CASCADE,
+    FOREIGN KEY ("sender") REFERENCES "User"("username") ON DELETE CASCADE
 );
 
 --- Insert sample data into User table

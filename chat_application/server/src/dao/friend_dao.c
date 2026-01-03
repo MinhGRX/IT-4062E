@@ -137,3 +137,32 @@ void friend_dao_get_requests(int client_fd, const char *username) {
     }
     PQclear(res);
 }
+
+
+int friend_dao_are_friends(const char *user1, const char *user2) {
+    if (!user1 || !user2 || strlen(user1) == 0 || strlen(user2) == 0) {
+        return 0;
+    }
+    
+    // Check if they are friends (bidirectional relationship)
+    char query[512];
+    snprintf(query, sizeof(query),
+        "SELECT 1 FROM \"Friend\" "
+        "WHERE (\"user1\" = '%s' AND \"user2\" = '%s') "
+        "   OR (\"user1\" = '%s' AND \"user2\" = '%s') "
+        "LIMIT 1;",
+        user1, user2, user2, user1);
+    
+    PGresult *res = PQexec(conn, query);
+    
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        fprintf(stderr, "SQL Error in friend_dao_are_friends: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+        return 0;
+    }
+    
+    int are_friends = PQntuples(res) > 0 ? 1 : 0;
+    PQclear(res);
+    
+    return are_friends;
+}

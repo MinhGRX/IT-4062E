@@ -16,6 +16,7 @@
 #include "globals.h"
 #include "controllers/auth_controller.h"
 #include "controllers/chat_controller.h"
+#include "controllers/group_controller.h"
 #include "dao/chat_dao.h"
 
 #define BUF_SIZE 4096
