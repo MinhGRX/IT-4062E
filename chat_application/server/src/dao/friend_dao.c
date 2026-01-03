@@ -6,7 +6,6 @@
 #include "dao/friend_dao.h"
 #include "database.h"
 #include "network.h"
-#include "globals.h"
 
 void friend_dao_get_list(int client_fd, const char *username) {
     char query[1024];

@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include "controllers/auth_controller.h"
 #include "controllers/chat_controller.h"
+#include "controllers/group_controller.h"
 #include "dao/friend_dao.h" 
 #include "dao/chat_dao.h"
 #include "database.h" 
@@ -88,6 +89,8 @@ void auth_controller_handle(int fd, char *cmd, char *user, char *pass, char *cur
             memset(current_user, 0, 64);
             send_line(fd, "OK LOGOUT successful\n");
         }
+
+        // Friend related commands
         else if (strcmp(cmd, "LIST_FRIEND") == 0) friend_dao_get_list(fd, current_user);
         else if (strcmp(cmd, "FRIEND_REQUEST") == 0) friend_dao_get_requests(fd, current_user);
         else if (strcmp(cmd, "ADD_FRIEND") == 0) friend_dao_add_request(fd, current_user, user);
@@ -95,6 +98,10 @@ void auth_controller_handle(int fd, char *cmd, char *user, char *pass, char *cur
         else if (strcmp(cmd, "DECLINE_FRIEND") == 0) friend_dao_decline_request(fd, current_user, user);
         else if (strcmp(cmd, "REMOVE_FRIEND") == 0) friend_dao_remove_friend(fd, current_user, user);
         
+        // Group related commands
+        else if (strcmp(cmd, "CREATE_GROUP") == 0) group_controller_create(fd, current_user, user);
+
+        // Chat related commands
         else if (strcmp(cmd, "CHAT") == 0) {
             int my_idx = -1;
             pthread_mutex_lock(&online_mutex);

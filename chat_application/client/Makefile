@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Iinclude -Wall
 LIBS = -lpthread
 
-SRCS = src/main.c src/network.c
+SRCS = src/client.c src/network.c
 OBJS = $(SRCS:.c=.o)
 
 client: $(OBJS)

@@ -16,6 +16,6 @@
 int send_line(int fd, const char *msg);
 
 // Hàm luồng phụ để nhận tin nhắn từ server (Cơ chế I/O - 2đ)
-void* receive_handler(void* socket_desc);
+static void* receive_handler(void* socket_desc);
 
 #endif

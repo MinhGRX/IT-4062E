@@ -37,7 +37,7 @@ CREATE TABLE "Group" (
 
 DROP TABLE IF EXISTS "GroupMember" CASCADE;
 CREATE TABLE "GroupMember" (
-    "groupId" INT NOT NULL REFERENCES "ChatGroup" ("groupId") ON DELETE CASCADE,
+    "groupId" INT NOT NULL REFERENCES "Group" ("groupId") ON DELETE CASCADE,
     "username" VARCHAR(255) NOT NULL REFERENCES "User" ("username") ON DELETE CASCADE,
     "role" VARCHAR(20) DEFAULT 'member' CHECK ("role" IN ('member','owner')),
     "joinedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -47,7 +47,7 @@ CREATE TABLE "GroupMember" (
 DROP TABLE IF EXISTS "GroupMessage" CASCADE;
 CREATE TABLE "GroupMessage" (
     "id" SERIAL PRIMARY KEY,
-    "groupId" INT NOT NULL REFERENCES "ChatGroup" ("groupId") ON DELETE CASCADE,
+    "groupId" INT NOT NULL REFERENCES "Group" ("groupId") ON DELETE CASCADE,
     "sender" VARCHAR(255) NOT NULL REFERENCES "User" ("username"),
     "content" TEXT,
     "sentTime" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

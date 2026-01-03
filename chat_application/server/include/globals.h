@@ -6,9 +6,12 @@
 #define MAX_CLIENTS 100
 #define BUF_SIZE 4096
 typedef struct {
+    char username[BUF_SIZE];
     int fd;
-    char username[64];
-    char chatting_with[64];
+    int is_logged_in;
+    char chatting_with[BUF_SIZE];
+    int current_group_id;          
+    char current_group_name[BUF_SIZE];
 } ActiveUser;
 
 extern ActiveUser online_users[MAX_CLIENTS];

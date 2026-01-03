@@ -1,14 +1,95 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "database.h"
 #include "network.h"
 #include "globals.h"
 
-PGconn *conn = NULL; 
+PGconn *conn = NULL;
+static DBConfig default_config = {
+    .host = "localhost",
+    .port = "5432",
+    .dbname = "chat_db",
+    .user = "",  
+    .password = ""
+};
 
-void db_connect() {
-    const char *conninfo = "host=localhost port=5432 dbname=chat_application_2 user=postgres password=123456";
+// Trim whitespace from string
+static void trim(char *str) {
+    char *end;
+    
+    // Trim leading space
+    while(isspace((unsigned char)*str)) str++;
+    
+    if(*str == 0) return;
+    
+    // Trim trailing space
+    end = str + strlen(str) - 1;
+    while(end > str && isspace((unsigned char)*end)) end--;
+    end[1] = '\0';
+}
+
+int db_load_config(const char *config_file, DBConfig *config) {
+    FILE *file = fopen(config_file, "r");
+    if (!file) {
+        fprintf(stderr, "[DB] Config file '%s' not found, using defaults\n", config_file);
+        *config = default_config;
+        return -1;
+    }
+
+    char line[512];
+    while (fgets(line, sizeof(line), file)) {
+        if (line[0] == '#' || line[0] == '\n') continue;
+        char key[128], value[256];
+        if (sscanf(line, "%127[^=]=%255[^\n]", key, value) == 2) {
+            trim(key);
+            trim(value);
+            if (strcmp(key, "DB_HOST") == 0) {
+                strncpy(config->host, value, sizeof(config->host) - 1);
+            } else if (strcmp(key, "DB_PORT") == 0) {
+                strncpy(config->port, value, sizeof(config->port) - 1);
+            } else if (strcmp(key, "DB_NAME") == 0) {
+                strncpy(config->dbname, value, sizeof(config->dbname) - 1);
+            } else if (strcmp(key, "DB_USER") == 0) {
+                strncpy(config->user, value, sizeof(config->user) - 1);
+            } else if (strcmp(key, "DB_PASSWORD") == 0) {
+                strncpy(config->password, value, sizeof(config->password) - 1);
+            }
+        }
+    }
+    fclose(file);
+    printf("[DB] Configuration loaded from '%s'\n", config_file);
+    return 0;
+}
+
+void db_connect_with_config(DBConfig *config) {
+    char conninfo[1024];
+    
+    // Build connection string
+    if (strlen(config->user) > 0 && strlen(config->password) > 0) {
+        // With username and password
+        snprintf(conninfo, sizeof(conninfo),
+                 "host=%s port=%s dbname=%s user=%s password=%s",
+                 config->host, config->port, config->dbname,
+                 config->user, config->password);
+    } else if (strlen(config->user) > 0) {
+        // With username only (peer auth or trust)
+        snprintf(conninfo, sizeof(conninfo),
+                 "host=%s port=%s dbname=%s user=%s",
+                 config->host, config->port, config->dbname, config->user);
+    } else {
+        // No credentials - use system user (peer authentication)
+        snprintf(conninfo, sizeof(conninfo),
+                 "host=%s port=%s dbname=%s",
+                 config->host, config->port, config->dbname);
+    }
+    
+    printf("[DB] Connecting to: host=%s port=%s dbname=%s user=%s\n",
+           config->host, config->port, config->dbname,
+           strlen(config->user) > 0 ? config->user : "(system user)");
+    
+    printf("[DB] Connection string: %s\n", conninfo);
     
     conn = PQconnectdb(conninfo);
 
@@ -18,6 +99,16 @@ void db_connect() {
         exit(1);
     }
     printf("Kết nối Database thành công!\n");
+}
+
+void db_connect() {
+    DBConfig config;
+    const char *cfg = getenv("DB_CONFIG");
+    if (!cfg) cfg = "database/db.conf";
+    if (db_load_config(cfg, &config) != 0) {
+        config = default_config;
+    }
+    db_connect_with_config(&config);
 }
 
 void db_disconnect() {

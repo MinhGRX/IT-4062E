@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -17,22 +18,48 @@ static int send_line(int fd, const char *msg) {
     return 0;
 }
 
-void* receive_handler(void* socket_desc) {
+// Drain any pending server messages (e.g., auto friend list after login)
+static void drain_pending_messages(int sock) {
+    char buffer[BUF_SIZE];
+    fd_set rfds;
+    struct timeval tv = {0, 200000}; // 200 ms timeout
+
+    while (1) {
+        FD_ZERO(&rfds);
+        FD_SET(sock, &rfds);
+        int r = select(sock + 1, &rfds, NULL, NULL, &tv);
+        if (r <= 0) break; // timeout or error
+
+        int n = recv(sock, buffer, BUF_SIZE - 1, 0);
+        if (n <= 0) break;
+        buffer[n] = '\0';
+        printf("%s", buffer);  // print raw, do not truncate at newline
+
+        // After first read, switch to zero-timeout to drain quickly
+        tv.tv_sec = 0;
+        tv.tv_usec = 0;
+    }
+}
+
+
+static void* receive_handler(void* socket_desc) {
     int sock = *(int*)socket_desc;
     char buffer[BUF_SIZE];
     
     while (1) {
         memset(buffer, 0, BUF_SIZE);
         int n = recv(sock, buffer, BUF_SIZE - 1, 0); 
-        
         if (n > 0) {
-            buffer[strcspn(buffer, "\n")] = 0;
+            buffer[n] = '\0';
             if (strncmp(buffer, "NOTIFY:", 7) == 0) {
                 printf("\n[THÔNG BÁO MỚI]: %s", buffer + 7);
             } else {
-                printf("\n[SERVER]: %s", buffer);
+                printf("%s", buffer);  // print raw
+                if (strstr(buffer, "OK LOGIN successful") != NULL) {
+                    drain_pending_messages(sock);
+                }
             }
-            printf("\n> "); 
+            printf("> ");
             fflush(stdout);
         } else if (n == 0) {
             printf("\n[CLIENT] Server đã đóng kết nối.\n");
