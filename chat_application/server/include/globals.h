@@ -17,6 +17,7 @@ typedef struct {
 extern ActiveUser online_users[MAX_CLIENTS];
 extern pthread_mutex_t online_mutex;
 
-void notify_user(const char *target_username, const char *msg);
+int get_user_index_by_fd(int fd);
+void notify_user(const char *target_username, const char *message);
 
 #endif

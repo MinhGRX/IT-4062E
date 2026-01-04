@@ -49,18 +49,35 @@ static void ensure_dirs(void)
     mkdir(LOG_DIR, 0755);
 }
 
-void notify_user(const char *target_username, const char *msg) {
+int get_user_index_by_fd(int fd) {
+    int idx = -1;
+    pthread_mutex_lock(&online_mutex);
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (online_users[i].fd == fd) {
+            idx = i;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&online_mutex);
+    return idx;
+}
+
+void notify_user(const char *target_username, const char *message) {
+    if (!target_username || !message || strlen(target_username) == 0 || strlen(message) == 0) {
+        return;
+    }
+
     pthread_mutex_lock(&online_mutex);
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (online_users[i].fd != -1 && strcmp(online_users[i].username, target_username) == 0) {
-            send_line(online_users[i].fd, msg);
+            send_line(online_users[i].fd, message);
             break;
         }
     }
     pthread_mutex_unlock(&online_mutex);
 }
 
-static int user_exists(const char *username)
+static int user_exists(const char *target_username)
 {
     pthread_mutex_lock(&file_mutex);
     
@@ -77,7 +94,7 @@ static int user_exists(const char *username)
             if (colon != NULL)
             {
                 *colon = '\0';
-                if (strcmp(line, username) == 0)
+                if (strcmp(line, target_username) == 0)
                 {
                     found = 1;
                     break;
@@ -142,19 +159,6 @@ static int register_user(const char *username, const char *password)
     return result;
 }
 
-int get_user_index_by_fd(int fd) {
-    int idx = -1;
-    pthread_mutex_lock(&online_mutex);
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (online_users[i].fd == fd) {
-            idx = i;
-            break;
-        }
-    }
-    pthread_mutex_unlock(&online_mutex);
-    return idx;
-}
-
 static void *do_client(void *arg)
 {
     int cfd = *(int *)arg;
@@ -181,9 +185,10 @@ static void *do_client(void *arg)
                 pthread_mutex_lock(&online_mutex);
                 for (int i = 0; i < MAX_CLIENTS; i++) {
                     if (online_users[i].fd == cfd) {
-                        char update_query[256];
-                        sprintf(update_query, "UPDATE \"User\" SET status = '0' WHERE username = '%s';", username);
-                        PQexec(conn, update_query);
+                        const char *update_query = "UPDATE \"User\" SET status = '0' WHERE username = $1;";
+                        const char *params[1] = {username};
+                        PGresult *res = db_exec_params(update_query, 1, params);
+                        PQclear(res);
                         online_users[i].fd = -1;
                         memset(online_users[i].username, 0, sizeof(online_users[i].username));
                         break;

@@ -29,7 +29,7 @@ void auth_controller_handle(int fd, char *cmd, char *user, char *pass, char *cur
         int res_reg = user_service_register(user, pass);
         if (res_reg == 1) {
             send_line(fd, "OK User registered\n");
-            log_activity("REGISTER: New user %s", user);
+            log_activity("[INFO] REGISTER: New user %s", user);
         }
         else if (res_reg == -1) send_line(fd, "ERR User already exists\n");
         else send_line(fd, "ERR Registration failed\n");
@@ -56,15 +56,16 @@ void auth_controller_handle(int fd, char *cmd, char *user, char *pass, char *cur
             pthread_mutex_unlock(&online_mutex);
 
             // Cập nhật trạng thái DB
-            char update_query[256];
-            sprintf(update_query, "UPDATE \"User\" SET status = '1' WHERE username = '%s';", user);
-            PQexec(conn, update_query);
+            const char *update_query = "UPDATE \"User\" SET status = '1' WHERE username = $1;";
+            const char *params[1] = {user};
+            PGresult *res = db_exec_params(update_query, 1, params);
+            PQclear(res);
 
             send_line(fd, "OK LOGIN successful\n");
             chat_dao_get_pending_senders(fd, user);
             
             friend_dao_get_list(fd, user);
-            log_activity("LOGIN: %s is now online", user);
+            log_activity("[INFO] LOGIN: %s is now online", user);
         } else {
             send_line(fd, "ERR Wrong username or password\n");
         }
@@ -73,9 +74,10 @@ void auth_controller_handle(int fd, char *cmd, char *user, char *pass, char *cur
     // 3. Các lệnh yêu cầu đã Login
     else if (*is_logged_in) {
         if (strcmp(cmd, "LOGOUT") == 0) {
-            char update_query[256];
-            sprintf(update_query, "UPDATE \"User\" SET status = '0' WHERE username = '%s';", current_user);
-            PQexec(conn, update_query);
+            const char *update_query = "UPDATE \"User\" SET status = '0' WHERE username = $1;";
+            const char *params[1] = {current_user};
+            PGresult *res = db_exec_params(update_query, 1, params);
+            PQclear(res);
             pthread_mutex_lock(&online_mutex);
             for(int i=0; i<MAX_CLIENTS; i++) {
                 if(online_users[i].fd == fd) {
@@ -86,7 +88,7 @@ void auth_controller_handle(int fd, char *cmd, char *user, char *pass, char *cur
             }
             pthread_mutex_unlock(&online_mutex);
 
-            log_activity("LOGOUT: User %s has logged out", current_user);
+            log_activity("[INFO] LOGOUT: User %s has logged out", current_user);
             *is_logged_in = 0;
             memset(current_user, 0, 64);
             send_line(fd, "OK LOGOUT successful\n");

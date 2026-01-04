@@ -2,11 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <pthread.h>
 #include "database.h"
 #include "network.h"
 #include "globals.h"
 
 PGconn *conn = NULL;
+pthread_mutex_t db_mutex = PTHREAD_MUTEX_INITIALIZER;
 static DBConfig default_config = {
     .host = "localhost",
     .port = "5432",
@@ -101,6 +103,22 @@ void db_connect_with_config(DBConfig *config) {
     printf("Kết nối Database thành công!\n");
 }
 
+PGresult *db_exec(const char *query) {
+    PGresult *res = NULL;
+    pthread_mutex_lock(&db_mutex);
+    res = PQexec(conn, query);
+    pthread_mutex_unlock(&db_mutex);
+    return res;
+}
+
+PGresult *db_exec_params(const char *query, int nParams, const char *const *paramValues) {
+    PGresult *res = NULL;
+    pthread_mutex_lock(&db_mutex);
+    res = PQexecParams(conn, query, nParams, NULL, paramValues, NULL, NULL, 0);
+    pthread_mutex_unlock(&db_mutex);
+    return res;
+}
+
 void db_connect() {
     DBConfig config;
     const char *cfg = getenv("DB_CONFIG");
@@ -120,7 +138,7 @@ void db_disconnect() {
 
 void db_reset_all_online_status() {
     const char *query = "UPDATE \"User\" SET status = '0';";
-    PGresult *res = PQexec(conn, query);
+    PGresult *res = db_exec(query);
 
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         fprintf(stderr, "[DB] Reset online status failed: %s\n", PQerrorMessage(conn));
@@ -134,7 +152,7 @@ void db_save_message(const char *sender, const char *receiver, const char *conte
     const char *query = "INSERT INTO \"MessageLog\" (sender, receiver, \"content\", sentTime, is_delivered) "
                         "VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4);";
     const char *params[4] = {sender, receiver, content, delivered ? "TRUE" : "FALSE"};
-    PGresult *res = PQexecParams(conn, query, 4, NULL, params, NULL, NULL, 0);
+    PGresult *res = db_exec_params(query, 4, params);
     PQclear(res);
 }
 
@@ -143,7 +161,7 @@ void db_get_history_and_mark_read(int client_fd, const char *me, const char *fri
                         "WHERE (sender = $1 AND receiver = $2) OR (sender = $2 AND receiver = $1) "
                         "ORDER BY messageId ASC LIMIT 50;";
     const char *params[2] = {me, friend};
-    PGresult *res = PQexecParams(conn, query, 2, NULL, params, NULL, NULL, 0);
+    PGresult *res = db_exec_params(query, 2, params);
 
     if (PQresultStatus(res) == PGRES_TUPLES_OK) {
         send_line(client_fd, "--- CHAT HISTORY ---\n");
@@ -155,9 +173,10 @@ void db_get_history_and_mark_read(int client_fd, const char *me, const char *fri
         send_line(client_fd, "--------------------\n");
         
         // Update đã đọc
-        char up_q[256];
-        sprintf(up_q, "UPDATE \"MessageLog\" SET is_delivered = TRUE WHERE sender = '%s' AND receiver = '%s';", friend, me);
-        PQexec(conn, up_q);
+        const char *update_q = "UPDATE \"MessageLog\" SET is_delivered = TRUE WHERE sender = $1 AND receiver = $2;";
+        const char *update_params[2] = {friend, me};
+        PGresult *up_res = db_exec_params(update_q, 2, update_params);
+        PQclear(up_res);
     }
     PQclear(res);
 }
@@ -165,7 +184,7 @@ void db_get_history_and_mark_read(int client_fd, const char *me, const char *fri
 void db_notify_pending(int client_fd, const char *me) {
     const char *q = "SELECT DISTINCT sender FROM \"MessageLog\" WHERE receiver = $1 AND is_delivered = FALSE;";
     const char *params[1] = {me};
-    PGresult *res = PQexecParams(conn, q, 1, NULL, params, NULL, NULL, 0);
+    PGresult *res = db_exec_params(q, 1, params);
     if (PQresultStatus(res) == PGRES_TUPLES_OK && PQntuples(res) > 0) {
         char list[BUF_SIZE] = "THÔNG BÁO: Các user đã nhắn cho bạn: ";
         for (int i = 0; i < PQntuples(res); i++) {
