@@ -17,6 +17,7 @@
 #include "controllers/auth_controller.h"
 #include "controllers/chat_controller.h"
 #include "controllers/group_controller.h"
+#include "services/log_service.h"
 #include "dao/chat_dao.h"
 
 #define BUF_SIZE 4096
@@ -41,46 +42,11 @@ static void rstrip(char *s)
 ActiveUser online_users[MAX_CLIENTS];
 pthread_mutex_t online_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// int send_line(int fd, const char *msg)
-// {
-//     size_t len = strlen(msg);
-//     if (send(fd, msg, len, 0) < 0)
-//     {
-//         return -1;
-//     }
-//     return 0;
-// }
 
 static void ensure_dirs(void)
 {
     mkdir(DATA_DIR, 0755);
     mkdir(LOG_DIR, 0755);
-}
-
-static void log_activity(const char *fmt, ...)
-{
-    pthread_mutex_lock(&file_mutex);
-    
-    FILE *f = fopen(LOG_FILE, "a");
-    if (f != NULL)
-    {
-        time_t t = time(NULL);
-        struct tm *tm_info = localtime(&t);
-        char ts[64];
-        strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", tm_info);
-        
-        fprintf(f, "[%s] ", ts);
-        
-        va_list ap;
-        va_start(ap, fmt);
-        vfprintf(f, fmt, ap);
-        va_end(ap);
-        
-        fprintf(f, "\n");
-        fclose(f);
-    }
-    
-    pthread_mutex_unlock(&file_mutex);
 }
 
 void notify_user(const char *target_username, const char *msg) {

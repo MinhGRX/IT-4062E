@@ -12,6 +12,7 @@
 #include "database.h" 
 #include "network.h"
 #include "services/user_service.h"
+#include "services/log_service.h"
 #include "globals.h"
 
 extern void log_activity(const char *fmt, ...);
@@ -101,34 +102,12 @@ void auth_controller_handle(int fd, char *cmd, char *user, char *pass, char *cur
         
         // Group related commands
         else if (strcmp(cmd, "CREATE_GROUP") == 0) group_controller_create(fd, current_user, user);
-        else if (strcmp(cmd, "GROUP_ADD") == 0) {
-            if (user && pass && strlen(user) > 0 && strlen(pass) > 0) {
-                int group_id = atoi(user);  // Convert arg1 to int
-                printf("[LOG] Processing GROUP_ADD command: group_id=%d, username=%s from user %s\n", 
-                    group_id, pass, current_user);
-                group_controller_add_member(fd, group_id, current_user, pass);
-            } else {
-                send_line(fd, "ERR Invalid command format. Use: GROUP_ADD <group_id> <username>\n");
-            }
-        }
-        else if (strcmp(cmd, "GROUP_REMOVE") == 0) {
-            if (user && pass && strlen(user) > 0 && strlen(pass) > 0) {
-                int group_id = atoi(user);
-                group_controller_remove_member(fd, group_id, current_user, pass);
-            } else {
-                send_line(fd, "ERR Invalid command format. Use: GROUP_REMOVE <group_id> <username>\n");
-            }
-        }
-        else if (strcmp(cmd, "LEAVE_GROUP") == 0) {
-            // user = group_id (string)
-            if (user && strlen(user) > 0) {
-                int group_id = atoi(user);
-                group_controller_leave(fd, group_id, current_user);
-            } else {
-                send_line(fd, "ERR Invalid command format. Use: LEAVE_GROUP <group_id>\n");
-            }
-        }
-
+        else if (strcmp(cmd, "GROUP_ADD") == 0) group_controller_add_member(fd, current_user, user, pass);
+        else if (strcmp(cmd, "GROUP_REMOVE") == 0) group_controller_remove_member(fd, current_user, user, pass);
+        else if (strcmp(cmd, "LEAVE_GROUP") == 0) group_controller_leave(fd, current_user, user);
+        else if (strcmp(cmd, "GROUP_MSG") == 0) group_controller_send_message(fd, current_user, user, pass);
+        else if (strcmp(cmd, "GROUP_HISTORY") == 0) group_controller_get_history(fd, current_user, user);
+        else if (strcmp(cmd, "GROUP_MEMBERS") == 0) group_controller_get_members(fd, current_user, user);
 
         // Chat related commands
         else if (strcmp(cmd, "CHAT") == 0) {

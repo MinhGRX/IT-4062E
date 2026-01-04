@@ -19,4 +19,13 @@ int group_dao_is_owner(int group_id, const char *username);
 // Remove a member from a group
 int group_dao_remove_member(int group_id, const char *username);
 
+// Save group message to database
+int group_dao_save_message(int group_id, const char *sender, const char *message);
+
+// Get group chat history (last N messages)
+int group_dao_get_history(int group_id, int limit, char ***out_messages, int *out_count);
+
+// Get all members of a group
+int group_dao_get_members(int group_id, char ***out_members, int *out_count);
+
 #endif

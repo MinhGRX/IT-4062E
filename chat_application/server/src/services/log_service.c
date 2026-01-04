@@ -24,3 +24,4 @@ void log_activity(const char *fmt, ...) {
     }
     pthread_mutex_unlock(&log_mutex);
 }
+
