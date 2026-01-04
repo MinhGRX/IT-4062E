@@ -254,7 +254,7 @@ OK You have left group 1
 
 ### Implementation Status
 
-**✅ Completed (20/20 points):**
+**Completed:**
 - System Foundation (6/6 points)
   - Stream handling and line-framed protocol
   - Multithreaded socket I/O
