@@ -14,7 +14,7 @@ void* receive_handler(void* socket_desc) {
             printf("\n> "); 
             fflush(stdout);
         } else if (n == 0) {
-            printf("\n[CLIENT] Mất kết nối tới Server.\n");
+            printf("\n[CLIENT] Server closed connection.\n");
             exit(0);
         } else {
             perror("Lỗi nhận tin nhắn");

@@ -52,7 +52,7 @@ static void* receive_handler(void* socket_desc) {
         if (n > 0) {
             buffer[n] = '\0';
             if (strncmp(buffer, "NOTIFY:", 7) == 0) {
-                printf("\n[THÔNG BÁO MỚI]: %s", buffer + 7);
+                printf("\n[NOTIFY]: %s", buffer + 7);
             } else {
                 printf("%s", buffer);  // print raw
                 if (strstr(buffer, "OK LOGIN successful") != NULL) {
@@ -62,7 +62,7 @@ static void* receive_handler(void* socket_desc) {
             printf("> ");
             fflush(stdout);
         } else if (n == 0) {
-            printf("\n[CLIENT] Server đã đóng kết nối.\n");
+            printf("\n[CLIENT] Server closed connection.\n");
             exit(0);
         } else {
             break;
@@ -91,12 +91,12 @@ int main(int argc, char **argv) {
     // 2. Tạo Socket và kết nối
     int s = socket(AF_INET, SOCK_STREAM, 0);
     if (connect(s, pResult->ai_addr, pResult->ai_addrlen) != 0) {
-        printf("[CLIENT] Không thể kết nối tới Server tại %s:%s\n", argv[1], argv[2]);
+        printf("[CLIENT] Can't connect to Server at %s:%s\n", argv[1], argv[2]);
         freeaddrinfo(pResult);
         return 1;
     }
     freeaddrinfo(pResult);
-    printf("[CLIENT] Đã kết nối thành công!\n");
+    printf("[CLIENT] Connection successfully!\n");
 
     // 3. KHỞI TẠO LUỒNG NHẬN TIN NHẮN (Ghi điểm cơ chế Bất đồng bộ)
     pthread_t tid;
@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
         fflush(stdout);
         if (fgets(input, sizeof(input), stdin) != NULL) {
             if (strcmp(input, "/quit\n") == 0) {
-                printf("[CLIENT] Đang thoát...\n");
+                printf("[CLIENT] Exiting...\n");
                 break;
             }
             send_line(s, input);

@@ -95,12 +95,30 @@ void auth_controller_handle(int fd, char *cmd, char *user, char *pass, char *cur
         }
 
         // Friend related commands
-        else if (strcmp(cmd, "LIST_FRIEND") == 0) friend_dao_get_list(fd, current_user);
-        else if (strcmp(cmd, "FRIEND_REQUEST") == 0) friend_dao_get_requests(fd, current_user);
-        else if (strcmp(cmd, "ADD_FRIEND") == 0) friend_dao_add_request(fd, current_user, user);
-        else if (strcmp(cmd, "ACCEPT_FRIEND") == 0) friend_dao_accept_request(fd, current_user, user);
-        else if (strcmp(cmd, "DECLINE_FRIEND") == 0) friend_dao_decline_request(fd, current_user, user);
-        else if (strcmp(cmd, "REMOVE_FRIEND") == 0) friend_dao_remove_friend(fd, current_user, user);
+        else if (strcmp(cmd, "LIST_FRIEND") == 0) {
+            friend_dao_get_list(fd, current_user);
+            log_activity("[INFO] LIST_FRIEND: User %s requested friend list", current_user);
+        }
+        else if (strcmp(cmd, "FRIEND_REQUEST") == 0) {
+            friend_dao_get_requests(fd, current_user);
+            log_activity("[INFO] FRIEND_REQUEST: User %s requested list friend requests", current_user);
+        }
+        else if (strcmp(cmd, "ADD_FRIEND") == 0) {
+            friend_dao_add_request(fd, current_user, user);
+            log_activity("[INFO] ADD_FRIEND: User %s sent friend request to %s", current_user, user);
+        }
+        else if (strcmp(cmd, "ACCEPT_FRIEND") == 0) {
+            friend_dao_accept_request(fd, current_user, user);
+            log_activity("[INFO] ACCEPT_FRIEND: User %s accepted friend request from %s", current_user, user);
+        }
+        else if (strcmp(cmd, "DECLINE_FRIEND") == 0) {
+            friend_dao_decline_request(fd, current_user, user);
+            log_activity("[INFO] DECLINE_FRIEND: User %s declined friend request from %s", current_user, user);
+        }
+        else if (strcmp(cmd, "REMOVE_FRIEND") == 0) {
+            friend_dao_remove_friend(fd, current_user, user);
+            log_activity("[INFO] REMOVE_FRIEND: User %s removed %s from friends", current_user, user);
+        }
         
         // Group related commands
         else if (strcmp(cmd, "CREATE_GROUP") == 0) group_controller_create(fd, current_user, user);
@@ -117,7 +135,7 @@ void auth_controller_handle(int fd, char *cmd, char *user, char *pass, char *cur
             pthread_mutex_lock(&online_mutex);
             for(int i=0; i<MAX_CLIENTS; i++) if(online_users[i].fd == fd) { my_idx = i; break; }
             pthread_mutex_unlock(&online_mutex);
-
+            log_activity("[INFO] CHAT: User %s is entering chat with %s", current_user, user);
             if (my_idx != -1) {
                 chat_controller_enter(my_idx, user);
             }

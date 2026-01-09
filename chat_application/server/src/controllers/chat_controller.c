@@ -3,10 +3,12 @@
 #include <pthread.h>
 #include "controllers/chat_controller.h"
 #include "dao/chat_dao.h"
+#include "services/log_service.h"
 #include "database.h"
 #include "network.h"
 #include "globals.h"
 
+extern void log_activity(const char *fmt, ...);
 // 1. Vào box chat
 void chat_controller_enter(int client_idx, const char *target)
 {
@@ -25,7 +27,7 @@ void chat_controller_leave(int client_idx)
     memset(online_users[client_idx].chatting_with, 0, 64);
     pthread_mutex_unlock(&online_mutex);
 
-    send_line(online_users[client_idx].fd, "OK: Đã quay lại sảnh chính.\n");
+    send_line(online_users[client_idx].fd, "OK: Back to main lobby.\n");
 }
 
 void chat_controller_send(int client_idx, const char *content)
@@ -63,7 +65,7 @@ void chat_controller_send(int client_idx, const char *content)
         if (target_fd != -1)
         {
             char notify[BUF_SIZE];
-            snprintf(notify, sizeof(notify), "NOTIFICATION: %s vừa nhắn tin cho bạn.\n", me);
+            snprintf(notify, sizeof(notify), "NOTIFICATION: %s just send you message.\n", me);
             send_line(target_fd, notify);
         }
         chat_dao_save_message(me, target, content, 0);
@@ -79,15 +81,18 @@ void chat_controller_handle_line(int client_idx, char *line)
     if (strcmp(line, "LEAVE") == 0)
     {
         chat_controller_leave(client_idx);
+        log_activity("[INFO] User %s left chat with %s\n", me, target);
     }
     else if (strcmp(line, "HISTORY") == 0)
     {
         printf("[LOG] User %s requested history with %s\n", me, target);
+        log_activity("[INFO] User %s requested chat history with %s\n", me, target);
         chat_dao_get_history(my_fd, me, target);
     }
     else if (strncmp(line, "SEND ", 5) == 0)
     {
         chat_controller_send(client_idx, line + 5);
+        log_activity("[INFO] User %s sent message to %s: %s\n", me, target, line + 5);
     }
     else
     {

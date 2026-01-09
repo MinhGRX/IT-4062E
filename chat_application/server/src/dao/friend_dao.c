@@ -19,6 +19,7 @@ void friend_dao_get_list(int client_fd, const char *username) {
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         fprintf(stderr, "SQL Error: %s\n", PQerrorMessage(conn));
         send_line(client_fd, "ERR Database error while fetching friends\n");
+        log_activity("[ERROR] FRIEND_DAO: Failed to get friend list for %s", username);
         PQclear(res);
         return;
     }
@@ -27,7 +28,7 @@ void friend_dao_get_list(int client_fd, const char *username) {
     if (rows == 0) {
         send_line(client_fd, "OK You have no friends in your list yet.\n");
     } else {
-        send_line(client_fd, "--- DANH SÁCH BẠN BÈ ---\n");
+        send_line(client_fd, "--- FRIEND LIST ---\n");
         for (int i = 0; i < rows; i++) {
             char line[256];
             char *f_name = PQgetvalue(res, i, 0);
@@ -50,11 +51,12 @@ void friend_dao_add_request(int client_fd, const char *sender, const char *recei
     PGresult *res = PQexec(conn, query);
     
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        send_line(client_fd, "ERR Lời mời đã gửi hoặc User không tồn tại\n");
+        send_line(client_fd, "ERR Friend request already sent or user does not exist\n");
+        log_activity("[ERROR] FRIEND_DAO: Failed to send friend request from %s to %s", sender, receiver);
     } else {
         send_line(client_fd, "OK Friend request sent\n");
         char notify_msg[256];
-        sprintf(notify_msg, "NOTIFY: Bạn nhận được lời mời kết bạn từ %s\n", sender);
+        sprintf(notify_msg, "NOTIFY: You received a friend request from %s\n", sender);
         notify_user(receiver, notify_msg); 
     }
     PQclear(res);
@@ -70,11 +72,12 @@ void friend_dao_accept_request(int client_fd, const char *username, const char *
         "COMMIT;", friend_name, username, username, friend_name);
     PGresult *res = PQexec(conn, query);
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        send_line(client_fd, "ERR Chấp nhận thất bại\n");
+        send_line(client_fd, "ERR Failed to accept friend request\n");
+        log_activity("[ERROR] FRIEND_DAO: Failed to accept friend request from %s to %s", friend_name, username);
     } else {
         send_line(client_fd, "OK Now you are friends\n");
         char notify_msg[256];
-        sprintf(notify_msg, "NOTIFY: %s đã chấp nhận lời mời kết bạn của bạn!\n", username);
+        sprintf(notify_msg, "NOTIFY: %s has accepted your friend request!\n", username);
         notify_user(friend_name, notify_msg);
     }
     PQclear(res);
@@ -87,15 +90,17 @@ void friend_dao_decline_request(int client_fd, const char *my_username, const ch
 
     PGresult *res = PQexec(conn, query);
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        send_line(client_fd, "ERR Không thể từ chối lời mời.\n");
+        send_line(client_fd, "ERR Failed to decline friend request.\n");
+        log_activity("[ERROR] FRIEND_DAO: Failed to decline friend request from %s to %s", 
+                     sender_name, my_username);
     } else {
         if (atoi(PQcmdTuples(res)) > 0) {
-            send_line(client_fd, "OK Đã từ chối lời mời kết bạn.\n");
+            send_line(client_fd, "OK Friend request declined.\n");
             char notify_msg[256];
-            sprintf(notify_msg, "NOTIFY: %s đã từ chối lời mời kết bạn của bạn.\n", my_username);
+            sprintf(notify_msg, "NOTIFY: %s has declined your friend request.\n", my_username);
             notify_user(sender_name, notify_msg);
         } else {
-            send_line(client_fd, "ERR Không tìm thấy lời mời kết bạn tương ứng.\n");
+            send_line(client_fd, "ERR Cannot find suitable friend request.\n");
         }
     }
     PQclear(res);
@@ -108,7 +113,9 @@ void friend_dao_remove_friend(int client_fd, const char *username, const char *f
             username, friend_name, friend_name, username);
     PGresult *res = PQexec(conn, query);
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        send_line(client_fd, "ERR Lỗi khi hủy kết bạn\n");
+        send_line(client_fd, "ERR Failed to remove friend\n");
+        log_activity("[ERROR] FRIEND_DAO: Failed to remove friend %s for user %s", 
+                     friend_name, username);
     } else {
         send_line(client_fd, "OK Friend removed\n");
     }
@@ -121,16 +128,16 @@ void friend_dao_get_requests(int client_fd, const char *username) {
     
     PGresult *res = PQexec(conn, query);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        send_line(client_fd, "ERR Không thể lấy danh sách lời mời\n");
+        send_line(client_fd, "ERR Cannot get list friend request\n");
     } else {
         int rows = PQntuples(res);
         if (rows == 0) {
-            send_line(client_fd, "OK Không có lời mời kết bạn nào.\n");
+            send_line(client_fd, "OK No pending friend requests.\n");
         } else {
-            send_line(client_fd, "--- LỜI MỜI KẾT BẠN ĐANG CHỜ ---\n");
+            send_line(client_fd, "--- PENDING FRIEND REQUESTS ---\n");
             for (int i = 0; i < rows; i++) {
                 char buffer[256];
-                sprintf(buffer, "User: %s gửi lời mời\n", PQgetvalue(res, i, 0));
+                sprintf(buffer, "User: %s sent a friend request\n", PQgetvalue(res, i, 0));
                 send_line(client_fd, buffer);
             }
         }

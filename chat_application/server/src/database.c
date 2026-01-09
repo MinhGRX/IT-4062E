@@ -96,11 +96,11 @@ void db_connect_with_config(DBConfig *config) {
     conn = PQconnectdb(conninfo);
 
     if (PQstatus(conn) != CONNECTION_OK) {
-        fprintf(stderr, "Kết nối Database thất bại: %s\n", PQerrorMessage(conn));
+        fprintf(stderr, "Failed to connect Database: %s\n", PQerrorMessage(conn));
         PQfinish(conn);
         exit(1);
     }
-    printf("Kết nối Database thành công!\n");
+    printf("Connected Database successfully!\n");
 }
 
 PGresult *db_exec(const char *query) {
@@ -132,7 +132,7 @@ void db_connect() {
 void db_disconnect() {
     if (conn != NULL) {
         PQfinish(conn);
-        printf("Đã đóng kết nối Database.\n");
+        printf("Closed Database connection.\n");
     }
 }
 
@@ -186,12 +186,12 @@ void db_notify_pending(int client_fd, const char *me) {
     const char *params[1] = {me};
     PGresult *res = db_exec_params(q, 1, params);
     if (PQresultStatus(res) == PGRES_TUPLES_OK && PQntuples(res) > 0) {
-        char list[BUF_SIZE] = "THÔNG BÁO: Các user đã nhắn cho bạn: ";
+        char list[BUF_SIZE] = "NOTIFICATION: Users have sent you messages: ";
         for (int i = 0; i < PQntuples(res); i++) {
             strcat(list, PQgetvalue(res, i, 0));
             if (i < PQntuples(res)-1) strcat(list, ", ");
         }
-        strcat(list, ". Gõ CHAT <tên> để xem.\n");
+        strcat(list, ". Press CHAT <username> to see messages.\n");
         send_line(client_fd, list);
     }
     PQclear(res);
