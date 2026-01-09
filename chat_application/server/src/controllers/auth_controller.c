@@ -1,15 +1,15 @@
-#include <stdio.h>    
+#include <stdio.h>
 #include <string.h>
 #include <strings.h>
-#include <stdlib.h> 
-#include <libpq-fe.h>  
+#include <stdlib.h>
+#include <libpq-fe.h>
 #include <pthread.h>
 #include "controllers/auth_controller.h"
 #include "controllers/chat_controller.h"
 #include "controllers/group_controller.h"
-#include "dao/friend_dao.h" 
+#include "dao/friend_dao.h"
 #include "dao/chat_dao.h"
-#include "database.h" 
+#include "database.h"
 #include "network.h"
 #include "services/user_service.h"
 #include "services/log_service.h"
@@ -17,35 +17,45 @@
 
 extern void log_activity(const char *fmt, ...);
 
-void auth_controller_handle(int fd, char *cmd, char *user, char *pass, char *current_user, int *is_logged_in) {
-    
+void auth_controller_handle(int fd, char *cmd, char *user, char *pass, char *current_user, int *is_logged_in)
+{
+
     // 1. PING & REGISTER
-    if (strcasecmp(cmd, "PING") == 0) {
+    if (strcasecmp(cmd, "PING") == 0)
+    {
         send_line(fd, "PONG\n");
         return;
     }
 
-    if (strcmp(cmd, "REGISTER") == 0) {
+    if (strcmp(cmd, "REGISTER") == 0)
+    {
         int res_reg = user_service_register(user, pass);
-        if (res_reg == 1) {
+        if (res_reg == 1)
+        {
             send_line(fd, "OK User registered\n");
             log_activity("[INFO] REGISTER: New user %s", user);
         }
-        else if (res_reg == -1) send_line(fd, "ERR User already exists\n");
-        else send_line(fd, "ERR Registration failed\n");
+        else if (res_reg == -1)
+            send_line(fd, "ERR User already exists\n");
+        else
+            send_line(fd, "ERR Registration failed\n");
         return;
-    } 
-    
+    }
+
     // 2. Xử lý LOGIN
-    if (strcmp(cmd, "LOGIN") == 0) {
-        if (user_service_login(user, pass)) {
+    if (strcmp(cmd, "LOGIN") == 0)
+    {
+        if (user_service_login(user, pass))
+        {
             strncpy(current_user, user, 63);
-            *is_logged_in = 1; 
-            
+            *is_logged_in = 1;
+
             int my_idx = -1;
             pthread_mutex_lock(&online_mutex);
-            for (int i = 0; i < MAX_CLIENTS; i++) {
-                if (online_users[i].fd == -1 || online_users[i].fd == fd) {
+            for (int i = 0; i < MAX_CLIENTS; i++)
+            {
+                if (online_users[i].fd == -1 || online_users[i].fd == fd)
+                {
                     online_users[i].fd = fd;
                     strncpy(online_users[i].username, user, 63);
                     strcpy(online_users[i].chatting_with, "");
@@ -63,24 +73,30 @@ void auth_controller_handle(int fd, char *cmd, char *user, char *pass, char *cur
 
             send_line(fd, "OK LOGIN successful\n");
             chat_dao_get_pending_senders(fd, user);
-            
+
             friend_dao_get_list(fd, user);
             log_activity("[INFO] LOGIN: %s is now online", user);
-        } else {
+        }
+        else
+        {
             send_line(fd, "ERR Wrong username or password\n");
         }
     }
 
     // 3. Các lệnh yêu cầu đã Login
-    else if (*is_logged_in) {
-        if (strcmp(cmd, "LOGOUT") == 0) {
+    else if (*is_logged_in)
+    {
+        if (strcmp(cmd, "LOGOUT") == 0)
+        {
             const char *update_query = "UPDATE \"User\" SET status = '0' WHERE username = $1;";
             const char *params[1] = {current_user};
             PGresult *res = db_exec_params(update_query, 1, params);
             PQclear(res);
             pthread_mutex_lock(&online_mutex);
-            for(int i=0; i<MAX_CLIENTS; i++) {
-                if(online_users[i].fd == fd) {
+            for (int i = 0; i < MAX_CLIENTS; i++)
+            {
+                if (online_users[i].fd == fd)
+                {
                     online_users[i].fd = -1;
                     memset(online_users[i].username, 0, 64);
                     break;
@@ -95,13 +111,37 @@ void auth_controller_handle(int fd, char *cmd, char *user, char *pass, char *cur
         }
 
         // Friend related commands
-        else if (strcmp(cmd, "LIST_FRIEND") == 0) friend_dao_get_list(fd, current_user);
-        else if (strcmp(cmd, "FRIEND_REQUEST") == 0) friend_dao_get_requests(fd, current_user);
-        else if (strcmp(cmd, "ADD_FRIEND") == 0) friend_dao_add_request(fd, current_user, user);
-        else if (strcmp(cmd, "ACCEPT_FRIEND") == 0) friend_dao_accept_request(fd, current_user, user);
-        else if (strcmp(cmd, "DECLINE_FRIEND") == 0) friend_dao_decline_request(fd, current_user, user);
-        else if (strcmp(cmd, "REMOVE_FRIEND") == 0) friend_dao_remove_friend(fd, current_user, user);
-        
+        else if (strcmp(cmd, "LIST_FRIEND") == 0)
+        {
+            friend_dao_get_list(fd, current_user);
+            log_activity("[INFO] LIST_FRIEND: User %s requested friend list", current_user);
+        }
+        else if (strcmp(cmd, "FRIEND_REQUEST") == 0)
+        {
+            friend_dao_get_requests(fd, current_user);
+            log_activity("[INFO] FRIEND_REQUEST: User %s requested list friend requests", current_user);
+        }
+        else if (strcmp(cmd, "ADD_FRIEND") == 0)
+        {
+            friend_dao_add_request(fd, current_user, user);
+            log_activity("[INFO] ADD_FRIEND: User %s sent friend request to %s", current_user, user);
+        }
+        else if (strcmp(cmd, "ACCEPT_FRIEND") == 0)
+        {
+            friend_dao_accept_request(fd, current_user, user);
+            log_activity("[INFO] ACCEPT_FRIEND: User %s accepted friend request from %s", current_user, user);
+        }
+        else if (strcmp(cmd, "DECLINE_FRIEND") == 0)
+        {
+            friend_dao_decline_request(fd, current_user, user);
+            log_activity("[INFO] DECLINE_FRIEND: User %s declined friend request from %s", current_user, user);
+        }
+        else if (strcmp(cmd, "REMOVE_FRIEND") == 0)
+        {
+            friend_dao_remove_friend(fd, current_user, user);
+            log_activity("[INFO] REMOVE_FRIEND: User %s removed %s from friends", current_user, user);
+        }
+
         // Group related commands
         else if (strcmp(cmd, "CREATE_GROUP") == 0) group_controller_create(fd, current_user, user);
         else if (strcmp(cmd, "GROUP_ADD") == 0) group_controller_add_member(fd, current_user, user, pass);
@@ -113,17 +153,26 @@ void auth_controller_handle(int fd, char *cmd, char *user, char *pass, char *cur
         else if (strcmp(cmd, "LIST_GROUPS") == 0) group_controller_list(fd, current_user);
         
         // Chat related commands
-        else if (strcmp(cmd, "CHAT") == 0) {
+        else if (strcmp(cmd, "CHAT") == 0)
+        {
             int my_idx = -1;
             pthread_mutex_lock(&online_mutex);
-            for(int i=0; i<MAX_CLIENTS; i++) if(online_users[i].fd == fd) { my_idx = i; break; }
+            for (int i = 0; i < MAX_CLIENTS; i++)
+                if (online_users[i].fd == fd)
+                {
+                    my_idx = i;
+                    break;
+                }
             pthread_mutex_unlock(&online_mutex);
-
-            if (my_idx != -1) {
+            log_activity("[INFO] CHAT: User %s is entering chat with %s", current_user, user);
+            if (my_idx != -1)
+            {
                 chat_controller_enter(my_idx, user);
             }
         }
-    } else {
+    }
+    else
+    {
         send_line(fd, "ERR Please login first\n");
     }
 }

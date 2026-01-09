@@ -23,6 +23,7 @@ CREATE TABLE "MessageLog" (
                               receiver VARCHAR(255),
                               "content" TEXT,
                               sentTime VARCHAR(255),
+                              is_delivered BOOLEAN DEFAULT FALSE,
                               FOREIGN KEY ("sender") REFERENCES "User" ("username"),
                               FOREIGN KEY ("receiver") REFERENCES "User" ("username")
 );

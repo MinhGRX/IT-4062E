@@ -21,9 +21,9 @@
 #include "dao/chat_dao.h"
 
 #define BUF_SIZE 4096
-#define BACKLOG  128
+#define BACKLOG 128
 #define DATA_DIR "./data"
-#define LOG_DIR  "./logs"
+#define LOG_DIR "./logs"
 #define USERS_FILE "./data/users.txt"
 #define LOG_FILE "./logs/server.log"
 
@@ -33,7 +33,7 @@ extern PGconn *conn;
 static void rstrip(char *s)
 {
     size_t len = strlen(s);
-    while (len > 0 && (s[len-1] == '\n' || s[len-1] == '\r'))
+    while (len > 0 && (s[len - 1] == '\n' || s[len - 1] == '\r'))
     {
         s[--len] = '\0';
     }
@@ -42,18 +42,20 @@ static void rstrip(char *s)
 ActiveUser online_users[MAX_CLIENTS];
 pthread_mutex_t online_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-
 static void ensure_dirs(void)
 {
     mkdir(DATA_DIR, 0755);
     mkdir(LOG_DIR, 0755);
 }
 
-int get_user_index_by_fd(int fd) {
+int get_user_index_by_fd(int fd)
+{
     int idx = -1;
     pthread_mutex_lock(&online_mutex);
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (online_users[i].fd == fd) {
+    for (int i = 0; i < MAX_CLIENTS; i++)
+    {
+        if (online_users[i].fd == fd)
+        {
             idx = i;
             break;
         }
@@ -62,14 +64,18 @@ int get_user_index_by_fd(int fd) {
     return idx;
 }
 
-void notify_user(const char *target_username, const char *message) {
-    if (!target_username || !message || strlen(target_username) == 0 || strlen(message) == 0) {
+void notify_user(const char *target_username, const char *message)
+{
+    if (!target_username || !message || strlen(target_username) == 0 || strlen(message) == 0)
+    {
         return;
     }
 
     pthread_mutex_lock(&online_mutex);
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (online_users[i].fd != -1 && strcmp(online_users[i].username, target_username) == 0) {
+    for (int i = 0; i < MAX_CLIENTS; i++)
+    {
+        if (online_users[i].fd != -1 && strcmp(online_users[i].username, target_username) == 0)
+        {
             send_line(online_users[i].fd, message);
             break;
         }
@@ -80,10 +86,10 @@ void notify_user(const char *target_username, const char *message) {
 static int user_exists(const char *target_username)
 {
     pthread_mutex_lock(&file_mutex);
-    
+
     FILE *f = fopen(USERS_FILE, "r");
     int found = 0;
-    
+
     if (f != NULL)
     {
         char line[BUF_SIZE];
@@ -103,7 +109,7 @@ static int user_exists(const char *target_username)
         }
         fclose(f);
     }
-    
+
     pthread_mutex_unlock(&file_mutex);
     return found;
 }
@@ -111,10 +117,10 @@ static int user_exists(const char *target_username)
 static int check_password(const char *username, const char *password)
 {
     pthread_mutex_lock(&file_mutex);
-    
+
     FILE *f = fopen(USERS_FILE, "r");
     int match = 0;
-    
+
     if (f != NULL)
     {
         char line[BUF_SIZE];
@@ -127,7 +133,7 @@ static int check_password(const char *username, const char *password)
                 char *stored_user = line;
                 char *stored_pass = colon + 1;
                 *colon = '\0';
-                
+
                 if (strcmp(stored_user, username) == 0 && strcmp(stored_pass, password) == 0)
                 {
                     match = 1;
@@ -137,7 +143,7 @@ static int check_password(const char *username, const char *password)
         }
         fclose(f);
     }
-    
+
     pthread_mutex_unlock(&file_mutex);
     return match;
 }
@@ -145,7 +151,7 @@ static int check_password(const char *username, const char *password)
 static int register_user(const char *username, const char *password)
 {
     pthread_mutex_lock(&file_mutex);
-    
+
     int result = 0;
     FILE *f = fopen(USERS_FILE, "a");
     if (f != NULL)
@@ -154,7 +160,7 @@ static int register_user(const char *username, const char *password)
         fclose(f);
         result = 1;
     }
-    
+
     pthread_mutex_unlock(&file_mutex);
     return result;
 }
@@ -177,14 +183,18 @@ static void *do_client(void *arg)
         char buf[BUF_SIZE];
         memset(buf, 0, sizeof(buf));
         ssize_t n = recv(cfd, buf, sizeof(buf) - 1, 0);
-        
-        if (n <= 0) {
-            if (logged_in) {
+
+        if (n <= 0)
+        {
+            if (logged_in)
+            {
                 log_activity("DISCONNECT %s", username);
 
                 pthread_mutex_lock(&online_mutex);
-                for (int i = 0; i < MAX_CLIENTS; i++) {
-                    if (online_users[i].fd == cfd) {
+                for (int i = 0; i < MAX_CLIENTS; i++)
+                {
+                    if (online_users[i].fd == cfd)
+                    {
                         const char *update_query = "UPDATE \"User\" SET status = '0' WHERE username = $1;";
                         const char *params[1] = {username};
                         PGresult *res = db_exec_params(update_query, 1, params);
@@ -199,7 +209,8 @@ static void *do_client(void *arg)
             break;
         }
 
-        if (inlen + (size_t)n > sizeof(inbuf)) {
+        if (inlen + (size_t)n > sizeof(inbuf))
+        {
             inlen = 0;
             send_line(cfd, "ERR Line too long\n");
             continue;
@@ -209,24 +220,30 @@ static void *do_client(void *arg)
         inlen += (size_t)n;
 
         size_t start = 0;
-        for (size_t i = 0; i < inlen; i++) {
-            if (inbuf[i] == '\n') {
+        for (size_t i = 0; i < inlen; i++)
+        {
+            if (inbuf[i] == '\n')
+            {
                 size_t line_len = i - start + 1;
                 char line[BUF_SIZE];
                 memcpy(line, inbuf + start, line_len);
                 line[line_len] = '\0';
                 rstrip(line);
-                
-                if (line[0] != '\0') {
+
+                if (line[0] != '\0')
+                {
                     int my_idx = get_user_index_by_fd(cfd);
-                    if (logged_in && my_idx != -1 && strlen(online_users[my_idx].chatting_with) > 0) {
+                    if (logged_in && my_idx != -1 && strlen(online_users[my_idx].chatting_with) > 0)
+                    {
                         chat_controller_handle_line(my_idx, line);
-                        
-                    } else {
+                    }
+                    else
+                    {
                         char cmd[64] = {0}, arg1[64] = {0}, arg2[64] = {0};
                         int parts = sscanf(line, "%s %s %s", cmd, arg1, arg2);
-                        
-                        if (parts > 0) {
+
+                        if (parts > 0)
+                        {
                             auth_controller_handle(cfd, cmd, arg1, arg2, username, &logged_in);
                         }
                     }
@@ -236,7 +253,8 @@ static void *do_client(void *arg)
             }
         }
 
-        if (start > 0) {
+        if (start > 0)
+        {
             memmove(inbuf, inbuf + start, inlen - start);
             inlen -= start;
         }
@@ -259,17 +277,18 @@ int main(int argc, char **argv)
         struct addrinfo *pTmp = NULL;
         const char *domain = argv[1];
         const char *service = argv[2];
-        
+
         getaddrinfo(domain, service, NULL, &pResult);
         pTmp = pResult;
 
         pthread_mutex_lock(&online_mutex);
-        for (int i = 0; i < MAX_CLIENTS; i++) {
+        for (int i = 0; i < MAX_CLIENTS; i++)
+        {
             online_users[i].fd = -1;
             memset(online_users[i].username, 0, sizeof(online_users[i].username));
         }
         pthread_mutex_unlock(&online_mutex);
-        
+
         while (pTmp != NULL)
         {
             if (pTmp->ai_family == AF_INET)

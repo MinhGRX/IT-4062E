@@ -40,10 +40,10 @@ void chat_dao_get_history(int client_fd, const char *me, const char *friend_name
     if (PQresultStatus(res) == PGRES_TUPLES_OK)
     {
         int rows = PQntuples(res);
-        send_line(client_fd, "\n--- LỊCH SỬ TIN NHẮN ---\n");
+        send_line(client_fd, "\n--- CHAT HISTORY ---\n");
         if (rows == 0)
         {
-            send_line(client_fd, "(Chưa có tin nhắn nào)\n");
+            send_line(client_fd, "(No messages yet)\n");
         }
         else
         {
@@ -55,7 +55,7 @@ void chat_dao_get_history(int client_fd, const char *me, const char *friend_name
                 send_line(client_fd, buf);
             }
         }
-        send_line(client_fd, "--- HẾT LỊCH SỬ ---\n\n");
+        send_line(client_fd, "--- END OF HISTORY ---\n\n");
     }
     PQclear(res);
 }
@@ -97,7 +97,7 @@ void chat_dao_get_pending_senders(int client_fd, const char *me)
                 if (i < rows - 1)
                     strncat(list, ", ", sizeof(list) - strlen(list) - 1);
             }
-            strncat(list, " đã nhắn cho bạn.\n", sizeof(list) - strlen(list) - 1);
+            strncat(list, " has sent you a message.\n", sizeof(list) - strlen(list) - 1);
             send_line(client_fd, list);
         }
     }

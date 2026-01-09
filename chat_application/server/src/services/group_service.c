@@ -8,9 +8,11 @@
 #include "dao/friend_dao.h"
 #include "network.h"
 
-int group_service_create(int client_fd, const char *username, const char *group_name) {
+int group_service_create(int client_fd, const char *username, const char *group_name)
+{
     // Validation at service layer
-    if (!username || !group_name || strlen(username) == 0 || strlen(group_name) == 0) {
+    if (!username || !group_name || strlen(username) == 0 || strlen(group_name) == 0)
+    {
         send_line(client_fd, "ERR Invalid username or group name\n");
         log_activity("[ERROR] GROUP_CREATE: Invalid input from user");
         return -1;
@@ -18,7 +20,8 @@ int group_service_create(int client_fd, const char *username, const char *group_
 
     // Call DAO to do actual work
     int group_id = 0;
-    if (group_dao_create(group_name, username, &group_id) != 0) {
+    if (group_dao_create(group_name, username, &group_id) != 0)
+    {
         send_line(client_fd, "ERR Failed to create group (name may exist)\n");
         log_activity("[ERROR] GROUP_CREATE: Failed to create group (name may exist)");
         return -1;
@@ -31,37 +34,43 @@ int group_service_create(int client_fd, const char *username, const char *group_
     return 0;
 }
 
-int group_service_add_member(int client_fd, const char *username, int group_id, const char *username_to_add) {
+int group_service_add_member(int client_fd, const char *username, int group_id, const char *username_to_add)
+{
     // Input validation at service layer
-    if (!username || !username_to_add || strlen(username) == 0 || strlen(username_to_add) == 0 || group_id <= 0) {
+    if (!username || !username_to_add || strlen(username) == 0 || strlen(username_to_add) == 0 || group_id <= 0)
+    {
         send_line(client_fd, "ERR Invalid parameters\n");
         log_activity("[ERROR] GROUP_ADD_MEMBER: Invalid input parameters");
         return -1;
     }
 
     // check if caller is member
-    if (!group_dao_is_member(group_id, username)) {
+    if (!group_dao_is_member(group_id, username))
+    {
         send_line(client_fd, "ERR You must be a member of this group to add others\n");
         log_activity("[ERROR] GROUP_ADD_MEMBER: User %s not member of group %d", username, group_id);
         return -1;
     }
 
     // check friendship
-    if (!friend_dao_are_friends(username, username_to_add)) {
+    if (!friend_dao_are_friends(username, username_to_add))
+    {
         send_line(client_fd, "ERR You can only add friends to the group\n");
         log_activity("[ERROR] GROUP_ADD_MEMBER: Users %s and %s are not friends", username, username_to_add);
         return -1;
     }
 
     // check if already member
-    if (group_dao_is_member(group_id, username_to_add)) {
+    if (group_dao_is_member(group_id, username_to_add))
+    {
         send_line(client_fd, "ERR User is already a member of this group\n");
         log_activity("[ERROR] GROUP_ADD_MEMBER: User %s already in group %d", username_to_add, group_id);
         return -1;
     }
 
     // Call DAO to do the work
-    if (group_dao_add_member(group_id, username_to_add, "member") != 0) {
+    if (group_dao_add_member(group_id, username_to_add, "member") != 0)
+    {
         send_line(client_fd, "ERR Failed to add member to database\n");
         log_activity("[ERROR] GROUP_ADD_MEMBER: Failed to add member to database");
         return -1;
@@ -80,37 +89,43 @@ int group_service_add_member(int client_fd, const char *username, int group_id, 
     return 0;
 }
 
-int group_service_remove_member(int client_fd, const char *username, int group_id, const char *username_to_remove) {
+int group_service_remove_member(int client_fd, const char *username, int group_id, const char *username_to_remove)
+{
     // Input validation
-    if (!username || !username_to_remove || strlen(username) == 0 || strlen(username_to_remove) == 0 || group_id <= 0) {
+    if (!username || !username_to_remove || strlen(username) == 0 || strlen(username_to_remove) == 0 || group_id <= 0)
+    {
         send_line(client_fd, "ERR Invalid parameters\n");
         log_activity("[ERROR] GROUP_REMOVE_MEMBER: Invalid input parameters");
         return -1;
     }
 
     // only owner can remove
-    if (!group_dao_is_owner(group_id, username)) {
+    if (!group_dao_is_owner(group_id, username))
+    {
         send_line(client_fd, "ERR Only group owner can remove members\n");
         log_activity("[ERROR] GROUP_REMOVE_MEMBER: User %s not owner of group %d", username, group_id);
         return -1;
     }
 
     // owner cannot remove themselves
-    if (strcmp(username, username_to_remove) == 0) {
+    if (strcmp(username, username_to_remove) == 0)
+    {
         send_line(client_fd, "ERR Owner cannot remove themselves (use LEAVE_GROUP or delete group)\n");
         log_activity("[ERROR] GROUP_REMOVE_MEMBER: Owner %s tried to remove self from group %d", username, group_id);
         return -1;
     }
 
     // target must be member
-    if (!group_dao_is_member(group_id, username_to_remove)) {
+    if (!group_dao_is_member(group_id, username_to_remove))
+    {
         send_line(client_fd, "ERR User is not a member of this group\n");
         log_activity("[ERROR] GROUP_REMOVE_MEMBER: User %s not in group %d", username_to_remove, group_id);
         return -1;
     }
 
     // Call DAO to do the work
-    if (group_dao_remove_member(group_id, username_to_remove) != 0) {
+    if (group_dao_remove_member(group_id, username_to_remove) != 0)
+    {
         send_line(client_fd, "ERR Failed to remove member from database\n");
         log_activity("[ERROR] GROUP_REMOVE_MEMBER: Failed to remove member from database");
         return -1;
@@ -129,23 +144,27 @@ int group_service_remove_member(int client_fd, const char *username, int group_i
     return 0;
 }
 
-int group_service_send_message(int client_fd, const char *username, int group_id, const char *message) {
+int group_service_send_message(int client_fd, const char *username, int group_id, const char *message)
+{
     // Input validation
-    if (!username || !message || strlen(username) == 0 || strlen(message) == 0 || group_id <= 0) {
+    if (!username || !message || strlen(username) == 0 || strlen(message) == 0 || group_id <= 0)
+    {
         send_line(client_fd, "ERR Invalid parameters\n");
         log_activity("[ERROR] GROUP_SEND_MESSAGE: Invalid input parameters");
         return -1;
     }
 
     // user must be member
-    if (!group_dao_is_member(group_id, username)) {
+    if (!group_dao_is_member(group_id, username))
+    {
         send_line(client_fd, "ERR You must be a member of this group to send messages\n");
         log_activity("[ERROR] GROUP_SEND_MESSAGE: User %s not member of group %d", username, group_id);
         return -1;
     }
 
     // Call DAO to save message
-    if (group_dao_save_message(group_id, username, message) != 0) {
+    if (group_dao_save_message(group_id, username, message) != 0)
+    {
         send_line(client_fd, "ERR Failed to save message\n");
         log_activity("[ERROR] GROUP_SEND_MESSAGE: Failed to save message");
         return -1;
@@ -157,7 +176,8 @@ int group_service_send_message(int client_fd, const char *username, int group_id
     char **members;
     int member_count;
 
-    if (group_dao_get_members(group_id, &members, &member_count) != 0 || member_count == 0) {
+    if (group_dao_get_members(group_id, &members, &member_count) != 0 || member_count == 0)
+    {
         send_line(client_fd, "OK Message saved but no members to broadcast to\n");
         return 0;
     }
@@ -166,7 +186,8 @@ int group_service_send_message(int client_fd, const char *username, int group_id
     snprintf(broadcast_msg, sizeof(broadcast_msg), "GROUP_MSG [%d] %s: %s\n", group_id, username, message);
 
     int broadcast_count = 0;
-    for (int i = 0; i < member_count; i++) {
+    for (int i = 0; i < member_count; i++)
+    {
         notify_user(members[i], broadcast_msg);
         broadcast_count++;
         free(members[i]);
