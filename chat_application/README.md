@@ -15,31 +15,31 @@ This chat application is built using C with a PostgreSQL database and provides a
 ## Features
 
 ### 1. System Foundation (6 points)
-- ✅ Stream handling and line-framed protocol
-- ✅ Socket I/O mechanism on server (multithreaded)
-- ✅ User registration and account management (PostgreSQL)
-- ✅ Activity logging with colored output (ERROR/WARNING/INFO/DEBUG)
+-  Stream handling and line-framed protocol
+-  Socket I/O mechanism on server (multithreaded)
+-  User registration and account management (PostgreSQL)
+-  Activity logging with colored output (ERROR/WARNING/INFO/DEBUG)
 
 ### 2. User Session & Friends (6 points)
-- ✅ Login and session management
-- ✅ Send friend requests
-- ✅ Accept/decline friend requests
-- ✅ Remove friends
-- ✅ Get friends list and online status
+-  Login and session management
+-  Send friend requests
+-  Accept/decline friend requests
+-  Remove friends
+-  Get friends list and online status
 
 ### 3. Messaging (2 points)
-- ✅ Send/receive messages between two users
-- ✅ Offline message delivery
+-  Send/receive messages between two users
+-  Offline message delivery
 
 ### 4. Connection Management (1 point)
-- ✅ Disconnect handling and notifications
+-  Disconnect handling and notifications
 
 ### 5. Group Chat (5 points)
-- ✅ Create group chats
-- ✅ Add users to group chat (with friendship validation)
-- ✅ Remove users from group chat (owner-only)
-- ✅ Leave group chat (member-only)
-- ✅ Send/receive group messages with broadcast
+-  Create group chats
+-  Add users to group chat (with friendship validation)
+-  Remove users from group chat (owner-only)
+-  Leave group chat (member-only)
+-  Send/receive group messages with broadcast
 
 
 ## Architecture

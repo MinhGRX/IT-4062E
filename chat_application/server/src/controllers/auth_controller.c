@@ -110,7 +110,8 @@ void auth_controller_handle(int fd, char *cmd, char *user, char *pass, char *cur
         else if (strcmp(cmd, "GROUP_MSG") == 0) group_controller_send_message(fd, current_user, user, pass);
         else if (strcmp(cmd, "GROUP_HISTORY") == 0) group_controller_get_history(fd, current_user, user);
         else if (strcmp(cmd, "GROUP_MEMBERS") == 0) group_controller_get_members(fd, current_user, user);
-
+        else if (strcmp(cmd, "LIST_GROUPS") == 0) group_controller_list(fd, current_user);
+        
         // Chat related commands
         else if (strcmp(cmd, "CHAT") == 0) {
             int my_idx = -1;

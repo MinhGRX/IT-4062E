@@ -28,4 +28,7 @@ int group_dao_get_history(int group_id, int limit, char ***out_messages, int *ou
 // Get all members of a group
 int group_dao_get_members(int group_id, char ***out_members, int *out_count);
 
+// List all groups a user belongs to
+int group_dao_list_user_groups(const char *username, char ***out_groups, int *out_count);
+
 #endif

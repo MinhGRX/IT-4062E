@@ -179,3 +179,122 @@ int group_service_send_message(int client_fd, const char *username, int group_id
 
     return 0;
 }
+
+int group_service_list_groups(int client_fd, const char *username) {
+    // Input validation
+    if (!username || strlen(username) == 0) {
+        send_line(client_fd, "ERR Invalid username\n");
+        log_activity("[ERROR] GROUP_LIST: Invalid username");
+        return -1;
+    }
+
+    // Call DAO to get groups
+    char **groups;
+    int group_count;
+
+    if (group_dao_list_user_groups(username, &groups, &group_count) != 0) {
+        send_line(client_fd, "ERR Failed to retrieve group list\n");
+        log_activity("[ERROR] GROUP_LIST: Failed to retrieve group list for %s", username);
+        return -1;
+    }
+
+    if (group_count == 0) {
+        send_line(client_fd, "OK You are not a member of any groups\n");
+        return 0;
+    }
+
+    char header[256];
+    snprintf(header, sizeof(header), "OK GROUP_LIST (%d groups):\n", group_count);
+    send_line(client_fd, header);
+
+    for (int i = 0; i < group_count; i++) {
+        send_line(client_fd, groups[i]);
+        send_line(client_fd, "\n");
+        free(groups[i]);
+    }
+    free(groups);
+    send_line(client_fd, "END_GROUP_LIST\n");
+
+    log_activity("[INFO] GROUP_LIST: %s listed %d groups", username, group_count);
+    return 0;
+}
+
+int group_service_get_history(int client_fd, const char *username, int group_id, int limit, const char ***messages, int *msg_count) {
+    // Input validation
+    if (!username || strlen(username) == 0 || group_id <= 0) {
+        send_line(client_fd, "ERR Invalid parameters\n");
+        log_activity("[ERROR] GROUP_GET_HISTORY: Invalid input parameters");
+        return -1;
+    }
+
+    // user must be member
+    if (!group_dao_is_member(group_id, username)) {
+        send_line(client_fd, "ERR You must be a member of this group to view history\n");
+        log_activity("[ERROR] GROUP_GET_HISTORY: User %s not member of group %d", username, group_id);
+        return -1;
+    }
+
+    if (group_dao_get_history(group_id, 50, &messages, &msg_count) != 0) {
+        send_line(client_fd, "ERR Failed to retrieve chat history\n");
+        return -1;
+    }
+
+    if (msg_count == 0) {
+        send_line(client_fd, "OK No messages in group history\n");
+        return 0;
+    }
+
+    char header[256];
+    snprintf(header, sizeof(header), "OK GROUP_HISTORY [%d] (%d messages):\n", group_id, msg_count);
+    send_line(client_fd, header);
+
+    for (int i = 0; i < msg_count; i++) {
+        send_line(client_fd, messages[i]);
+        send_line(client_fd, "\n");
+        free(messages[i]);
+    }
+    free(messages);
+    send_line(client_fd, "END_HISTORY\n");
+
+    log_activity("[INFO] GROUP_GET_HISTORY: %s viewed history of group %d", username, group_id);
+    return 0;
+}
+
+int group_service_get_members(int client_fd, const char *username, int group_id) {
+    // Input validation
+    if (!username || strlen(username) == 0 || group_id <= 0) {
+        send_line(client_fd, "ERR Invalid parameters\n");
+        log_activity("[ERROR] GROUP_GET_MEMBERS: Invalid input parameters");
+        return -1;
+    }
+
+    // Call DAO to get members
+    char **members;
+    int member_count;
+
+    if (group_dao_get_members(group_id, &members, &member_count) != 0) {
+        send_line(client_fd, "ERR Failed to get group members\n");
+        log_activity("[ERROR] GROUP_GET_MEMBERS: Failed to get members of group %d", group_id);
+        return -1;
+    }
+
+    if (member_count == 0) {
+        send_line(client_fd, "OK No members in this group\n");
+        return 0;
+    }
+
+    char header[256];
+    snprintf(header, sizeof(header), "OK GROUP_MEMBERS [%d] (%d members):\n", group_id, member_count);
+    send_line(client_fd, header);
+
+    for (int i = 0; i < member_count; i++) {
+        send_line(client_fd, members[i]);
+        send_line(client_fd, "\n");
+        free(members[i]);
+    }
+    free(members);
+    send_line(client_fd, "END_MEMBER_LIST\n");
+
+    log_activity("[INFO] GROUP_GET_MEMBERS: %s viewed members of group %d", username, group_id);
+    return 0;
+}

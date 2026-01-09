@@ -265,3 +265,49 @@ int group_dao_get_members(int group_id, char ***out_members, int *out_count) {
     PQclear(res);
     return 0;
 }
+
+int group_dao_list_user_groups(const char *username, char ***out_groups, int *out_count) {
+    if (!out_groups || !out_count) {
+        fprintf(stderr, "ERROR: Invalid output parameters\n");
+        return -1;
+    }
+
+    char query[512];
+    snprintf(query, sizeof(query),
+        "SELECT g.\"groupName\" FROM \"Group\" g "
+        "JOIN \"GroupMember\" gm ON g.\"groupId\" = gm.\"groupId\" "
+        "WHERE gm.\"username\" = '%s';",
+        username);
+
+    PGresult *res = PQexec(conn, query);
+
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        fprintf(stderr, "SQL Error in group_dao_list_user_groups: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+        return -1;
+    }
+
+    int rows = PQntuples(res);
+    *out_count = rows;
+
+    if (rows == 0) {
+        *out_groups = NULL;
+        PQclear(res);
+        return 0;
+    }
+
+    *out_groups = (char **)malloc(rows * sizeof(char *));
+    if (!*out_groups) {
+        fprintf(stderr, "ERROR: Memory allocation failed\n");
+        PQclear(res);
+        return -1;
+    }
+
+    for (int i = 0; i < rows; i++) {
+        const char *group_name = PQgetvalue(res, i, 0);
+        (*out_groups)[i] = strdup(group_name);
+    }
+
+    PQclear(res);
+    return 0;
+}

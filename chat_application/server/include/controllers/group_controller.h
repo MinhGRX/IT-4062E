@@ -25,4 +25,6 @@ void group_controller_get_history(int client_fd, const char *username, const cha
 // List all members of a group
 void group_controller_get_members(int client_fd, const char *username, const char *group_id_str);
 
+// List all groups for a user
+void group_controller_list(int client_fd, const char *username);
 #endif
