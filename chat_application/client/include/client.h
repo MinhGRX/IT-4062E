@@ -1,14 +1,14 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <pthread.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netdb.h>
+#include <unistd.h>
 
 #define BUF_SIZE 4096
 
@@ -16,6 +16,6 @@
 int send_line(int fd, const char *msg);
 
 // Hàm luồng phụ để nhận tin nhắn từ server (Cơ chế I/O - 2đ)
-static void* receive_handler(void* socket_desc);
+static void *receive_handler(void *socket_desc);
 
 #endif

@@ -1,11 +1,13 @@
 #ifndef GROUP_DAO_H
 #define GROUP_DAO_H
 
-#include <libpq-fe.h>
 #include "../database.h"
+#include <libpq-fe.h>
+
 
 // Create a new group
-int group_dao_create(const char *group_name, const char *creator, int *out_group_id);
+int group_dao_create(const char *group_name, const char *creator,
+                     int *out_group_id);
 
 // Add a member to a group
 int group_dao_add_member(int group_id, const char *username, const char *role);
@@ -20,10 +22,12 @@ int group_dao_is_owner(int group_id, const char *username);
 int group_dao_remove_member(int group_id, const char *username);
 
 // Save group message to database
-int group_dao_save_message(int group_id, const char *sender, const char *message);
+int group_dao_save_message(int group_id, const char *sender,
+                           const char *message);
 
 // Get group chat history (last N messages)
-int group_dao_get_history(int group_id, int limit, char ***out_messages, int *out_count);
+int group_dao_get_history(int group_id, int limit, char ***out_messages,
+                          int *out_count);
 
 // Get all members of a group
 int group_dao_get_members(int group_id, char ***out_members, int *out_count);

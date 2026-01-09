@@ -29,3 +29,23 @@
 [2026-01-09 08:40:55] SERVER START
 [2026-01-09 08:52:08] SERVER START
 
+[2026-01-09 09:00:07] SERVER START
+[2026-01-09 09:00:27] SERVER START
+[2026-01-09 09:00:49] [INFO] LOGIN: minh is now online
+[2026-01-09 09:00:49] CLIENT 5: LOGIN minh 123456
+[2026-01-09 09:48:10] SERVER START
+[2026-01-09 09:48:50] [INFO] LOGIN: user1 is now online
+[2026-01-09 09:48:50] CLIENT 5: LOGIN user1 password1
+[2026-01-09 09:48:48] [INFO] CHAT: User user1 is entering chat with minh
+[2026-01-09 09:48:48] CLIENT 5: CHAT minh
+[2026-01-09 09:49:01] [INFO] User user1 sent message to minh: hello abc xyz
+
+[2026-01-09 09:49:01] CLIENT 5: SEND hello abc xyz
+[2026-01-09 09:49:06] [INFO] LOGIN: minh is now online
+[2026-01-09 09:49:06] CLIENT 6: LOGIN minh 123456
+[2026-01-09 09:49:22] [INFO] CHAT: User minh is entering chat with user1
+[2026-01-09 09:49:22] CLIENT 6: CHAT user1
+[2026-01-09 09:49:29] CLIENT 6: hhhe hehhe hhehe
+[2026-01-09 09:52:54] CLIENT 6: hh hh hh hh
+[2026-01-09 09:52:57] CLIENT 5: adas Ãasd da ds a a d
+[2026-01-09 09:53:23] CLIENT 5: helolo lolo lololo
